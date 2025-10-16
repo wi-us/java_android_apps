@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 final String[] items = {"Овца", "Корова", "Волк", "Лось", "Ленивец"};
                 final boolean[] selectedItems = {false, false, false, false, false};
-                final boolean[] correctAnswers = {true, true, false, true, false};
+                final boolean[] correctAnswers = {true, true, false, true, true};
 
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("Внезапный тест! Какие животные являются травоядными?")
