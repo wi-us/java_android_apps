@@ -1,0 +1,33 @@
+<resources>
+    <!-- Базовая тема приложения -->
+    <style name="Theme.Lab4" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Набор базовых цветов (минимально достаточно) -->
+        <item name="colorPrimary">@color/purple</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Рассвет -->
+    <style name="ThemeOverlay.Split.Dawn" parent="">
+        <item name="splitTopColor">#FFD54F</item>
+        <item name="splitBottomColor">#0D1B2A</item>
+    </style>
+
+    <!-- День -->
+    <style name="ThemeOverlay.Split.Day" parent="">
+        <item name="splitTopColor">#FFE135</item>
+        <item name="splitBottomColor">#0D1B2A</item>
+    </style>
+
+    <!-- Закат -->
+    <style name="ThemeOverlay.Split.Sunset" parent="">
+        <item name="splitTopColor">#FF6B35</item>
+        <item name="splitBottomColor">#0D1B2A</item>
+    </style>
+
+    <!-- Ночь -->
+    <style name="ThemeOverlay.Split.Night" parent="">
+        <item name="splitTopColor">#4A148C</item>
+        <item name="splitBottomColor">#0D1B2A</item>
+    </style>
+</resources>

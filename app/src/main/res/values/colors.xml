@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="purple">#4d0099</color>
+    <color name="yellow_sunrise">#ffefc2 </color>
+    <color name="green_sunrise">#00d2aa  </color>
+
+    <color name="night_color">#1A237E</color>
+    <color name="sunrise_yellow">#FFD54F</color>
+
+    <color name="sunset_orange">#FF7043</color>
+    <color name="moon_blue">#3F51B5</color>
+    <color name="sun_gold">#FFC107</color>
+
+    <!-- Базовый цвет (темное небо) -->
+    <color name="sky_base">#0F0F23</color>
+
+    <!-- РАССВЕТ - от темно-синего к розово-золотому -->
+    <color name="dawn_start">#0F0F23</color>
+    <color name="dawn_end">#FFB6C1</color>
+
+    <!-- ДЕНЬ - от темно-синего к ярко-голубому -->
+    <color name="day_start">#0F0F23</color>
+    <color name="day_end">#87CEEB</color>
+
+    <!-- ЗАКАТ - от темно-синего к оранжево-красному -->
+    <color name="sunset_start">#0F0F23</color>
+    <color name="sunset_end">#FF6347</color>
+
+    <!-- НОЧЬ - от темно-синего к фиолетовому -->
+    <color name="night_start">#0F0F23</color>
+    <color name="night_end">#6A5ACD</color>
+</resources>
