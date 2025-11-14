@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Основные цвета приложения -->
+    <color name="colorPrimary">#FF0000</color>        <!-- Синий для кнопок и основных элементов -->
+    <color name="colorPrimaryDark">#1976D2</color>     <!-- Темно-синий для статус-бара -->
+    <color name="colorAccent">#FF9800</color>         <!-- Оранжевый для акцентных элементов -->
+</resources>

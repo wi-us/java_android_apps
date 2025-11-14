@@ -1,0 +1,58 @@
+<resources>
+    <string name="app_name">Lab5</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    
+    <!-- Форма обратной связи -->
+    <string name="feedback_form_title">Форма обратной связи</string>
+    <string name="fio_hint">ФИО</string>
+    <string name="email_hint">Email</string>
+    <string name="send_button">Отправить</string>
+    <string name="fio_error_empty">Поле ФИО не может быть пустым</string>
+    <string name="email_error_empty">Поле Email не может быть пустым</string>
+    <string name="email_error_invalid">Введите корректный email адрес</string>
+    <string name="submission_success">Заявка отправлена!</string>
+    <string name="application_number">Номер заявки: #%1$s</string>
+    
+    <!-- Тестирование -->
+    <string name="testing_title">Тестирование</string>
+    <string name="answer_button">Ответить</string>
+    <string name="score_text">Счет: %1$d/%2$d</string>
+    <string name="testing_completed">Тестирование завершено!</string>
+    <string name="completed_button">Завершено</string>
+    <string name="dialog_title">Выберите правильный ответ:</string>
+    <string name="cancel_button">Отмена</string>
+    <string name="submit_button">Ответить</string>
+    <string name="select_answer_error">Пожалуйста, выберите ответ</string>
+    <string name="correct_answer">Правильно! ✅</string>
+    <string name="wrong_answer">Неправильно! ❌\nПравильный ответ: %1$s</string>
+    
+    <!-- Вопросы тестирования -->
+    <string name="question_1">Какой язык программирования используется для разработки Android приложений?</string>
+    <string name="question_2">Что такое Activity в Android?</string>
+    <string name="question_3">Какой файл содержит манифест приложения?</string>
+    
+    <!-- Варианты ответов -->
+    <string name="option_java">Java</string>
+    <string name="option_kotlin">Kotlin</string>
+    <string name="option_python">Python</string>
+    <string name="option_cpp">C++</string>
+    <string name="option_ui_component">Компонент интерфейса</string>
+    <string name="option_database">База данных</string>
+    <string name="option_service">Сервис</string>
+    <string name="option_library">Библиотека</string>
+    <string name="option_manifest">AndroidManifest.xml</string>
+    <string name="option_main_activity">MainActivity.java</string>
+    <string name="option_strings">strings.xml</string>
+    <string name="option_build_gradle">build.gradle</string>
+    
+    <!-- Уведомления -->
+    <string name="notifications_title">Уведомления</string>
+    <string name="notifications_description">Нажмите на кнопку ниже, чтобы отправить push уведомление с информацией о студенте</string>
+    <string name="send_notification_button">Отправить уведомление</string>
+    <string name="student_info">Студент: Варавинов Даниил\nГруппа: ИСиТ-423901</string>
+    <string name="notification_sent">Push уведомление отправлено!</string>
+    <string name="notification_error">Ошибка при отправке уведомления: %1$s</string>
+    <string name="notification_title">Информация о студенте</string>
+    <string name="notification_content">Студент: %1$s\nГруппа: %2$s</string>
+    <string name="notification_big_text">Студент: %1$s\nГруппа: %2$s\n\nУведомление отправлено из приложения Lab5</string>
+</resources>
