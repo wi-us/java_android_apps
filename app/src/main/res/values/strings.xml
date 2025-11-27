@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Lab7</string>
+    <string name="scan_button_text">Сканировать QR-код</string>
+    <string name="scan_prompt">Наведите камеру на QR-код</string>
+    <string name="footer_signature">Варавинов Даниил ИСиТ-423901</string>
+    <string name="detail_default_title">QR результат</string>
+    <string name="detail_default_description">Содержимое не распознано</string>
+    <string name="house_title">Дом</string>
+    <string name="house_description">Классический кирпичный дом с двускатной крышей</string>
+    <string name="campus_title">Университет</string>
+    <string name="campus_description">Главный корпус университета, где проходят лекции</string>
+    <string name="student_title">Варавинов Даниил Владимирович</string>
+    <string name="student_description">Дружественный сервисный робот, который пытается закрыть все работы. Обучается на 4м курсе ИСиТ-423901-НТ</string>
+    <string name="unknown_qr_message">Этот QR-код не поддерживается</string>
+    <string name="camera_permission_denied">Для сканирования требуется разрешение на камеру</string>
+</resources>
