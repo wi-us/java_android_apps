@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="Варавинов Даниил ИСиТ-423901"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_next"
+        style="@style/Widget.App.Button.MainButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:text="Продолжить"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.956"
+        app:layout_constraintStart_toEndOf="@+id/textView3" />
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/button_next"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toTopOf="@+id/button_next"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/textView2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Калькулятор ЕГЭ"
+                android:textAppearance="@style/TextAppearance.App.Headline" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/math_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/math_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Математика *"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/russian_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/russian_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Русский язык *"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/society_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/society_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Обществознание"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/it_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/it_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Информатика"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/chemistry_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/chemistry_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Химия"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/physics_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/physics_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Физика"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/flanguage_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/flanguage_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="Иностранный язык"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/geography_input_layout"
+                style="@style/Widget.App.TextInputLayout.Login">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/geography_input"
+                    style="@style/Widget.App.TextInputEditText.Base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:hint="География"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
