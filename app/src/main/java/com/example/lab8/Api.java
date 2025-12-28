@@ -14,7 +14,7 @@ import retrofit2.http.Body;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
-// Один файл: и сеть, и DTO. Так часто делают в учебных работах.
+
 public class Api {
 
     private static final String BASE_URL = "https://nti.urfu.ru/";
