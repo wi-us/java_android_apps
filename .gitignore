@@ -1,0 +1,30 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Project cleanup (artifacts / dumps)
+*.pdf
+*.log
+dummy
+database.sqlite
+12shop.db
+_shop.db
+cisco_*.md
+
+# Python caches / tools
+**/__pycache__/
+**/*.pyc
+exam_server/chromedriver.exe

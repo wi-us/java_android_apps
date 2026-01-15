@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - {{ config.plural }}{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>{{ config.plural }}</h2>
+    <button id="openModalBtn">Add New {{ config.singular }}</button>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                {% for col in config.columns %}
+                <th>{{ col.replace('_', ' ')|title }}</th>
+                {% endfor %}
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                {% for col in config.columns %}
+                {# Некоторые поля могут быть словарями (ForeignKey), отображаем их id #}
+                <td>{{ item[col].id if item[col] is mapping else item[col] }}</td>
+                {% endfor %}
+                <td>
+                    <a href="#" class="edit-btn" data-id="{{ item.id }}" data-model="{{ model_name }}">Edit</a> |
+                    <a href="/{{ model_name }}/delete/{{ item.id }}" onclick="return confirm('Are you sure?')">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+<div id="itemModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New {{ config.singular }}</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <form id="itemForm" method="post" action="/{{ model_name }}/save">
+            <input type="hidden" name="id" id="form-id">
+            <div class="modal-body">
+                {% for field in config.form_fields %}
+                <div class="form-field-group">
+                    <label for="form-{{ field.name }}">{{ field.name.replace('_', ' ')|title }}</label>
+                    {% if field.type == 'select' %}
+                        <select id="form-{{ field.name }}" name="{{ field.name }}" {% if field.required %}required{% endif %}>
+                            <option value="">-- Select --</option>
+                            {% for option in field.options %}
+                                <option value="{{ option.id }}">{{ option.label or option.name or option.title or option.login or option.id }}</option>
+                            {% endfor %}
+                        </select>
+                    {% elif field.type == 'checkbox' %}
+                        <input type="checkbox" id="form-{{ field.name }}" name="{{ field.name }}">
+                    {% else %}
+                        <input type="{{ field.type }}" id="form-{{ field.name }}" name="{{ field.name }}" {% if field.required %}required{% endif %}>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="submit">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('itemModal');
+    const openBtn = document.getElementById('openModalBtn');
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    const form = document.getElementById('itemForm');
+    const modalTitle = document.getElementById('modalTitle');
+
+    function showModal() { modal.style.display = 'flex'; }
+    function hideModal() { modal.style.display = 'none'; form.reset(); document.getElementById('form-id').value = ''; modalTitle.textContent = `Add New {{ config.singular }}`; }
+
+    openBtn.addEventListener('click', () => {
+        form.reset();
+        document.getElementById('form-id').value = '';
+        modalTitle.textContent = `Add New {{ config.singular }}`;
+        showModal();
+    });
+
+    closeBtn.addEventListener('click', hideModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const id = e.target.dataset.id;
+            const modelName = e.target.dataset.model;
+
+            try {
+                const response = await fetch(`/${modelName}/${id}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                form.reset();
+                document.getElementById('form-id').value = data.id;
+                modalTitle.textContent = `Edit {{ config.singular }} #${data.id}`;
+
+                for (const key in data) {
+                    const field = form.elements[key];
+                    if (field) {
+                        if (field.type === 'checkbox') {
+                            field.checked = data[key];
+                        } else {
+                            // Для select'ов нужно присваивать значение по id
+                            field.value = (typeof data[key] === 'object' && data[key] !== null) ? data[key].id : data[key];
+                        }
+                    }
+                }
+                showModal();
+            } catch (error) {
+                console.error('Error fetching item data:', error);
+                alert('Failed to load item data.');
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 20px;
+}
+</style>
+{% endblock %}

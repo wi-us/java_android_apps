@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Shop Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h1>Admin Panel</h1>
+            <nav>
+                <ul>
+                    {% for model_key in models %}
+                    <li>
+                        <a href="/{{ model_key }}" class="{{ 'active' if model_key == model_name else '' }}">
+                            {{ model_key.replace('_', ' ')|title }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout">Logout</a>
+                <a href="/docs" target="_blank">API Docs</a>
+            </div>
+        </aside>
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', path='/script.js') }}"></script>
+</body>
+</html>

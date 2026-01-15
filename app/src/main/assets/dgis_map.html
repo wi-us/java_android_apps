@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>2GIS Map</title>
+  <style>
+    html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+    #map { position: absolute; inset: 0; }
+    .panel {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      background: rgba(255,255,255,0.94);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    }
+    .row { display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .hint { font-size: 12px; color: #444; margin-bottom: 8px; }
+    button {
+      border: none;
+      background: #ff6a00;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .coords { font-size: 12px; color:#333; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="panel">
+    <div class="hint">Тапните по карте, чтобы поставить маркер. Затем нажмите «Выбрать».</div>
+    <div class="row">
+      <div class="coords">
+        <div id="coords">—</div>
+        <div id="addr" style="margin-top:6px; font-size:12px; color:#111;">Адрес: —</div>
+      </div>
+      <button id="pickBtn">Выбрать</button>
+    </div>
+  </div>
+
+  <!-- 2GIS MapGL JS API (URL может отличаться в зависимости от вашего ключа/тарифа) -->
+  <script src="https://mapgl.2gis.com/api/js/v1"></script>
+  <script>
+    function qp(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+    const key = qp('key') || '';
+    const lat = parseFloat(qp('lat') || '55.7558');
+    const lon = parseFloat(qp('lon') || '37.6173');
+    const zoom = parseFloat(qp('zoom') || '12');
+
+    let picked = { lat, lon };
+    let marker = null;
+
+    function setCoords(lat, lon) {
+      picked = { lat, lon };
+      document.getElementById('coords').textContent = lat.toFixed(6) + ", " + lon.toFixed(6);
+      // попросим Android определить адрес по координатам (reverse geocode)
+      if (window.Android && typeof window.Android.onPointChanged === 'function') {
+        window.Android.onPointChanged(String(lat), String(lon));
+      }
+      if (marker) marker.destroy();
+      marker = new mapgl.Marker(map, { coordinates: [lon, lat] });
+    }
+
+    window.setSelectedAddress = function(text) {
+      const t = (text && String(text).trim()) ? String(text).trim() : "—";
+      document.getElementById('addr').textContent = "Адрес: " + t;
+    };
+
+    if (!window.mapgl || !key) {
+      document.getElementById('coords').textContent = "Ошибка: нет ключа карты 2ГИС";
+    }
+
+    const map = new mapgl.Map('map', {
+      key: key,
+      center: [lon, lat],
+      zoom: zoom
+    });
+
+    setCoords(lat, lon);
+
+    map.on('click', (e) => {
+      // MapGL click event: e.lngLat usually contains [lng, lat]
+      const ll = e && (e.lngLat || e.lnglat || e.coordinates);
+      if (ll && ll.length === 2) {
+        setCoords(ll[1], ll[0]);
+      }
+    });
+
+    document.getElementById('pickBtn').addEventListener('click', () => {
+      if (window.Android && typeof window.Android.onPicked === 'function') {
+        window.Android.onPicked(String(picked.lat), String(picked.lon));
+      }
+    });
+  </script>
+</body>
+</html>
+
+
