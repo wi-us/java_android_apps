@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+peewee
+pydantic
+jinja2
+python-multipart
+PyJWT
+requests
+python-dotenv
