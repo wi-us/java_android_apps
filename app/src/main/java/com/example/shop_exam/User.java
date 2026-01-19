@@ -1,6 +1,6 @@
 package com.example.shop_exam;
 
-// Этот класс описывает объект пользователя, который приходит в ответе от сервера
+// ответе от сервера (пользователь)
 public class User {
     int id;
     String login;

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".GameDetailActivity">
 
-    <!-- Тулбар сверху с кнопкой "назад" -->
+    <!-- Тулбар сверху с кнопкой назад -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar_layout"
         android:layout_width="match_parent"
@@ -48,12 +48,17 @@
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/slider_indicator"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_height="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                app:tabBackground="@drawable/tab_indicator_selector"
+                app:tabGravity="center"
                 app:tabIndicatorHeight="0dp"
-                app:tabRippleColor="@android:color/transparent"
-                app:tabTextColor="@android:color/transparent"
-                app:tabSelectedTextColor="@android:color/transparent" />
+                app:tabMinWidth="16dp"
+                app:tabMaxWidth="16dp"
+                app:tabPaddingStart="4dp"
+                app:tabPaddingEnd="4dp"
+                app:tabRippleColor="@android:color/transparent" />
 
             <!-- Контент с текстом -->
             <LinearLayout

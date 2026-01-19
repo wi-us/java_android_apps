@@ -1,6 +1,6 @@
 package com.example.shop_exam;
 
-// Локальная модель корзины (без сервера): достаточно для института.
+// Локальная модель корзины
 public class CartItem {
 
     private int gameVariantId;

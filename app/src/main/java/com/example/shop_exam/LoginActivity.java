@@ -2,89 +2,158 @@ package com.example.shop_exam;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.material.textfield.TextInputLayout;
+
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+/**
+ * Экран авторизации пользователя
+ */
 public class LoginActivity extends AppCompatActivity {
 
-    private static final String TAG = "LoginActivity";
-
-    private TextInputLayout loginInputLayout;
-    private TextInputLayout passwordInputLayout;
+    private TextInputLayout loginInput;
+    private TextInputLayout passwordInput;
     private Button loginButton;
+    private Button registerButton;
     private ApiService apiService;
+    private boolean returnToCart = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login);
 
+        // Нужно ли вернуться к корзине после авторизации
+        returnToCart = getIntent().getBooleanExtra("return_to_cart", false);
         apiService = ApiClient.getClient(this).create(ApiService.class);
-
-        // 2. Привязка View-элементов
-        loginInputLayout = findViewById(R.id.login_input_layout);
-        passwordInputLayout = findViewById(R.id.password_input_layout);
+        loginInput = findViewById(R.id.login_input_layout);
+        passwordInput = findViewById(R.id.password_input_layout);
         loginButton = findViewById(R.id.button_login);
+        registerButton = findViewById(R.id.button_registration);
 
-        // 3. Установка обработчика нажатия на кнопку входа
-        loginButton.setOnClickListener(v -> loginUser());
+        // Кнопка входа
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                login();
+            }
+        });
 
-        // 4. Установка обработчика нажатия на кнопку регистрации
-        Button registerNavButton = findViewById(R.id.button_registration);
-        registerNavButton.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            startActivity(intent);
+        // Кнопка перехода к регистрации
+        registerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                startActivity(intent);
+            }
         });
     }
 
-    private void loginUser() {
-        String username = loginInputLayout.getEditText().getText().toString().trim();
-        String password = passwordInputLayout.getEditText().getText().toString().trim();
+    // Авторизация пользователя
+    private void login() {
+        // Сброс ошибок
+        loginInput.setError(null);
+        passwordInput.setError(null);
 
-        if (username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Пожалуйста, введите логин и пароль", Toast.LENGTH_SHORT).show();
+        // Получение данных из полей
+        String username = "";
+        String password = "";
+
+        if (loginInput.getEditText() != null) {
+            username = loginInput.getEditText().getText().toString().trim();
+        }
+        if (passwordInput.getEditText() != null) {
+            password = passwordInput.getEditText().getText().toString().trim();
+        }
+
+        // Валидация
+        boolean isValid = true;
+
+        if (username.isEmpty()) {
+            loginInput.setError("Введите логин");
+            isValid = false;
+        } else if (username.length() < 4) {
+            loginInput.setError("Минимум 4 символа");
+            isValid = false;
+        }
+
+        if (password.isEmpty()) {
+            passwordInput.setError("Введите пароль");
+            isValid = false;
+        } else if (password.length() < 6) {
+            passwordInput.setError("Минимум 6 символов");
+            isValid = false;
+        }
+
+        if (!isValid) {
             return;
         }
 
-        Log.d(TAG, "Attempting to login with username: " + username);
-
+        // Запрос на сервер
         apiService.loginUser(username, password).enqueue(new Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    Log.d(TAG, "Login successful. Token: " + response.body().access_token);
-                    Toast.makeText(LoginActivity.this, "Вход выполнен успешно!", Toast.LENGTH_SHORT).show();
-                    
-                    TokenStore.saveToken(LoginActivity.this, response.body().access_token);
+                    // Сохранение токена
+                    String token = response.body().access_token;
+                    TokenStore.saveToken(LoginActivity.this, token);
 
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
+                    // Синхронизация локальной корзины с сервером
+                    syncLocalCartToServer();
+
+                    // Переход на нужный экран
+                    if (returnToCart) {
+                        Intent intent = new Intent(LoginActivity.this, CartActivity.class);
+                        startActivity(intent);
+                    } else {
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        startActivity(intent);
+                    }
                     finish();
                 } else {
-                    String error = "Ошибка входа. Проверьте данные.";
-                    try {
-                        if (response.errorBody() != null) {
-                            error += " Код: " + response.code() + " Тело: " + response.errorBody().string();
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error parsing error body", e);
-                    }
-                    Log.e(TAG, "Login failed: " + error);
-                    Toast.makeText(LoginActivity.this, error, Toast.LENGTH_LONG).show();
+                    passwordInput.setError("Неверный логин или пароль");
                 }
             }
 
             @Override
             public void onFailure(Call<LoginResponse> call, Throwable t) {
-                Log.e(TAG, "Network request failed", t);
-                Toast.makeText(LoginActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                passwordInput.setError("Ошибка сети");
             }
         });
+    }
+
+    // Синхронизация локальной корзины с сервером после авторизации
+    private void syncLocalCartToServer() {
+        Map<Integer, Integer> localItems = LocalCartStore.getItems(this);
+        
+        if (localItems.isEmpty()) {
+            return;
+        }
+
+        // Отправка каждого товара на сервер
+        for (Map.Entry<Integer, Integer> entry : localItems.entrySet()) {
+            int variantId = entry.getKey();
+            int quantity = entry.getValue();
+            
+            CartAddRequest request = new CartAddRequest(variantId, quantity);
+            apiService.addToCart(request).enqueue(new Callback<CartResponse>() {
+                @Override
+                public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
+                }
+
+                @Override
+                public void onFailure(Call<CartResponse> call, Throwable t) {
+                }
+            });
+        }
     }
 }

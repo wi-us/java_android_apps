@@ -1,11 +1,10 @@
 package com.example.shop_exam;
 
-import android.annotation.SuppressLint;
 import android.Manifest;
-import android.content.pm.PackageManager;
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.widget.Toast;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -18,209 +17,245 @@ import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/**
+ * Экран выбора адреса на карте 2ГИС
+ */
 public class MapPickerActivity extends AppCompatActivity {
 
+    // Ключи для передачи данных через Intent
     public static final String EXTRA_LAT = "lat";
     public static final String EXTRA_LON = "lon";
     public static final String RESULT_LAT = "result_lat";
     public static final String RESULT_LON = "result_lon";
     public static final String RESULT_TEXT = "result_text";
 
+    private static final int PERMISSION_REQUEST = 901;
+
     private WebView webView;
     private ApiService apiService;
-    private volatile boolean finishingWithPick = false;
+    private FusedLocationProviderClient locationClient;
 
-    private static final int REQ_LOCATION = 901;
-    private FusedLocationProviderClient fusedClient;
-    private String mapKey;
-    private double fallbackLat;
-    private double fallbackLon;
+    private String mapApiKey;
+    private double defaultLat;
+    private double defaultLon;
+    private boolean isPicking = false;
 
-    @SuppressLint({"SetJavaScriptEnabled"})
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_picker);
 
-        fallbackLat = getIntent().getDoubleExtra(EXTRA_LAT, 55.7558);
-        fallbackLon = getIntent().getDoubleExtra(EXTRA_LON, 37.6173);
+        // Получаем координаты из Intent (если есть)
+        defaultLat = getIntent().getDoubleExtra(EXTRA_LAT, 55.7558);
+        defaultLon = getIntent().getDoubleExtra(EXTRA_LON, 37.6173);
 
-        mapKey = getString(R.string.dgis_map_key);
+        // API-ключ
+        mapApiKey = getString(R.string.dgis_map_key);
+
+        // Инициализация сервисов
         apiService = ApiClient.getClient(this).create(ApiService.class);
-        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+        locationClient = LocationServices.getFusedLocationProviderClient(this);
 
+        // Настраиваем WebView
         webView = findViewById(R.id.map_webview);
+        setupWebView();
+
+        // Запрос разрешения на геолокацию и загрузка карты
+        requestLocationAndLoadMap();
+    }
+
+    // Настройка WebView для отображения карты
+    private void setupWebView() {
         webView.setWebViewClient(new WebViewClient());
 
-        WebSettings s = webView.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setAllowFileAccess(true);
-        s.setAllowContentAccess(true);
-        s.setMediaPlaybackRequiresUserGesture(false);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
 
-        webView.addJavascriptInterface(new Bridge(), "Android");
-
-        // Центрируем карту на текущем городе покупателя (по геолокации), если разрешение дано.
-        ensureLocationAndLoad();
+        // Добавляем JavaScript-интерфейс для взаимодействия с картой
+        webView.addJavascriptInterface(new MapBridge(), "Android");
     }
 
-    private void ensureLocationAndLoad() {
-        if (hasLocationPermission()) {
-            loadByDeviceLocationOrFallback();
-            return;
+    // Запрос разрешения на геолокацию
+    private void requestLocationAndLoadMap() {
+        boolean hasPermission = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+
+        if (hasPermission) {
+            // Разрешение есть - получаем координаты
+            getCurrentLocation();
+        } else {
+            // Запрашиваем разрешение
+            ActivityCompat.requestPermissions(this,
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    PERMISSION_REQUEST);
         }
-        ActivityCompat.requestPermissions(
-                this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                REQ_LOCATION
-        );
     }
 
-    private boolean hasLocationPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == PERMISSION_REQUEST) {
+            if (grantResults.length > 0 &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Разрешение получено
+                getCurrentLocation();
+            } else {
+                // Разрешение не получено - используем координаты по умолчанию
+                loadMap(defaultLat, defaultLon);
+            }
+        }
     }
 
+    // Получение текущего местоположения
     @SuppressLint("MissingPermission")
-    private void loadByDeviceLocationOrFallback() {
-        if (fusedClient == null) {
-            loadMap(fallbackLat, fallbackLon);
-            return;
-        }
-
-        fusedClient.getLastLocation().addOnSuccessListener(loc -> {
-            if (loc != null) {
-                loadMap(loc.getLatitude(), loc.getLongitude());
-                return;
+    private void getCurrentLocation() {
+        // Сначала пробуем получить последнее известное местоположение
+        locationClient.getLastLocation().addOnSuccessListener(location -> {
+            if (location != null) {
+                loadMap(location.getLatitude(), location.getLongitude());
+            } else {
+                // Если последнее местоположение недоступно - запрашиваем текущее
+                requestCurrentLocation();
             }
-            // Если lastLocation недоступна — попробуем запросить текущую.
-            try {
-                CancellationTokenSource cts = new CancellationTokenSource();
-                fusedClient.getCurrentLocation(
-                        com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                        cts.getToken()
-                ).addOnSuccessListener(l2 -> {
-                    if (l2 != null) {
-                        loadMap(l2.getLatitude(), l2.getLongitude());
-                    } else {
-                        loadMap(fallbackLat, fallbackLon);
-                    }
-                }).addOnFailureListener(e -> loadMap(fallbackLat, fallbackLon));
-            } catch (Throwable t) {
-                loadMap(fallbackLat, fallbackLon);
-            }
-        }).addOnFailureListener(e -> loadMap(fallbackLat, fallbackLon));
+        }).addOnFailureListener(e -> {
+            loadMap(defaultLat, defaultLon);
+        });
     }
 
+    // Запрос текущего местоположения
+    @SuppressLint("MissingPermission")
+    private void requestCurrentLocation() {
+        CancellationTokenSource cts = new CancellationTokenSource();
+
+        locationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.getToken())
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        loadMap(location.getLatitude(), location.getLongitude());
+                    } else {
+                        loadMap(defaultLat, defaultLon);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    loadMap(defaultLat, defaultLon);
+                });
+    }
+
+    // Загрузка карты с указанными координатами
     private void loadMap(double lat, double lon) {
         String url = "file:///android_asset/dgis_map.html"
-                + "?key=" + encode(mapKey)
+                + "?key=" + mapApiKey
                 + "&lat=" + lat
                 + "&lon=" + lon
                 + "&zoom=14";
         webView.loadUrl(url);
     }
 
-    private String encode(String s) {
-        if (s == null) return "";
-        return s.replace(" ", "%20");
-    }
+    /**
+     * JavaScript-интерфейс для взаимодействия с картой
+     */
+    private class MapBridge {
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_LOCATION) {
-            if (hasLocationPermission()) {
-                loadByDeviceLocationOrFallback();
-            } else {
-                // Разрешение не дали — оставляем fallback (что пришло из Checkout или Москва)
-                loadMap(fallbackLat, fallbackLon);
-            }
-        }
-    }
-
-    private class Bridge {
+        // Вызывается при перемещении маркера на карте
         @JavascriptInterface
         public void onPointChanged(String latStr, String lonStr) {
             try {
                 double lat = Double.parseDouble(latStr);
                 double lon = Double.parseDouble(lonStr);
-                fetchAndShowAddress(lat, lon, false);
-            } catch (Exception e) {
-                // ignore
+                getAddressByCoordinates(lat, lon, false);
+            } catch (NumberFormatException e) {
+                // Игнорируем ошибку парсинга
             }
         }
 
+        // Вызывается при нажатии кнопки "Выбрать"
         @JavascriptInterface
         public void onPicked(String latStr, String lonStr) {
             try {
                 double lat = Double.parseDouble(latStr);
                 double lon = Double.parseDouble(lonStr);
-                fetchAndShowAddress(lat, lon, true);
-            } catch (Exception e) {
-                // ignore
+                getAddressByCoordinates(lat, lon, true);
+            } catch (NumberFormatException e) {
+                // Игнорируем ошибку парсинга
             }
         }
     }
 
-    private void fetchAndShowAddress(double lat, double lon, boolean finishAfter) {
-        if (apiService == null) return;
-        finishingWithPick = finishAfter;
+    // Получение адреса по координатам (обратное геокодирование)
+    private void getAddressByCoordinates(double lat, double lon, boolean shouldFinish) {
+        isPicking = shouldFinish;
+
         apiService.addressReverse(lat, lon).enqueue(new Callback<AddressDetails>() {
             @Override
             public void onResponse(Call<AddressDetails> call, Response<AddressDetails> response) {
-                String text = null;
+                String address = "";
                 if (response.isSuccessful() && response.body() != null) {
-                    text = response.body().getText();
+                    address = response.body().getText();
+                    if (address == null) address = "";
                 }
-                final String addr = (text == null) ? "" : text;
 
-                // показать адрес на странице карты
-                runOnUiThread(() -> {
-                    try {
-                        webView.evaluateJavascript("window.setSelectedAddress && window.setSelectedAddress(" + jsStr(addr) + ");", null);
-                    } catch (Exception ignored) { }
+                // Показываем адрес на карте
+                final String finalAddress = address;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showAddressOnMap(finalAddress);
+                    }
                 });
 
-                if (finishingWithPick) {
-                    Intent data = new Intent();
-                    data.putExtra(RESULT_LAT, lat);
-                    data.putExtra(RESULT_LON, lon);
-                    data.putExtra(RESULT_TEXT, addr);
-                    setResult(RESULT_OK, data);
-                    finish();
+                // Если нужно завершить - возвращаем результат
+                if (isPicking) {
+                    returnResult(lat, lon, finalAddress);
                 }
             }
 
             @Override
             public void onFailure(Call<AddressDetails> call, Throwable t) {
-                if (finishingWithPick) {
-                    Intent data = new Intent();
-                    data.putExtra(RESULT_LAT, lat);
-                    data.putExtra(RESULT_LON, lon);
-                    data.putExtra(RESULT_TEXT, "");
-                    setResult(RESULT_OK, data);
-                    finish();
-                } else {
-                    Toast.makeText(MapPickerActivity.this, "Не удалось определить адрес", Toast.LENGTH_SHORT).show();
+                if (isPicking) {
+                    returnResult(lat, lon, "");
                 }
             }
         });
     }
 
-    private String jsStr(String s) {
-        if (s == null) return "\"\"";
-        // very small JSON-string escape
-        String out = s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ");
-        return "\"" + out + "\"";
+    // Показ адреса на карте через JavaScript
+    private void showAddressOnMap(String address) {
+        String jsAddress = escapeForJs(address);
+        String script = "if(window.setSelectedAddress) window.setSelectedAddress(\"" + jsAddress + "\");";
+        webView.evaluateJavascript(script, null);
+    }
+
+    // Экранирование строки для JavaScript
+    private String escapeForJs(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ")
+                .replace("\r", " ");
+    }
+
+    // Возврат результата в вызывающую Activity
+    private void returnResult(double lat, double lon, String address) {
+        Intent data = new Intent();
+        data.putExtra(RESULT_LAT, lat);
+        data.putExtra(RESULT_LON, lon);
+        data.putExtra(RESULT_TEXT, address);
+        setResult(RESULT_OK, data);
+        finish();
     }
 }
-
-

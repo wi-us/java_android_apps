@@ -4,15 +4,16 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,38 +23,77 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/**
+ * Экран оформления заказа
+ */
 public class CheckoutActivity extends AppCompatActivity {
 
-    private ApiService apiService;
-    private SwipeRefreshLayout swipeRefresh;
-    private Toolbar toolbar;
+    private static final int REQUEST_MAP = 701;
 
+    private Toolbar toolbar;
+    private SwipeRefreshLayout swipeRefresh;
     private AutoCompleteTextView addressInput;
-    private com.google.android.material.textfield.TextInputEditText nameInput;
-    private com.google.android.material.textfield.TextInputEditText phoneInput;
-    private com.google.android.material.textfield.TextInputEditText apartmentInput;
-    private com.google.android.material.textfield.TextInputEditText commentInput;
+    private TextInputEditText nameInput;
+    private TextInputEditText phoneInput;
+    private TextInputEditText apartmentInput;
+    private TextInputEditText commentInput;
     private TextView totalText;
     private Button submitButton;
-    private Button pickOnMapButton;
+    private Button mapButton;
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private Runnable addressDebounceRunnable;
+    private ApiService apiService;
     private ArrayAdapter<AddressSuggestion> addressAdapter;
-    private String selectedPlaceId;
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable debounceRunnable;
+
+    // Координаты выбранного адреса
     private Double selectedLat = null;
     private Double selectedLon = null;
-    private static final int REQ_PICK_MAP = 701;
 
-    private double currentTotal = 0.0;
+    // Сумма заказа
+    private double orderTotal = 0.0;
+
+    // Счётчик для отслеживания загрузки
+    private int loadCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_checkout);
 
+        findViews();
+        setupToolbar();
         apiService = ApiClient.getClient(this).create(ApiService.class);
+        setupAddressAutocomplete();
+        loadData();
 
+        // Обновление свайпом
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                loadData();
+            }
+        });
+
+        // Кнопка "Выбрать на карте"
+        mapButton.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override
+            public void onClick(android.view.View v) {
+                openMap();
+            }
+        });
+
+        // Кнопка "Оформить заказ"
+        submitButton.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override
+            public void onClick(android.view.View v) {
+                submitOrder();
+            }
+        });
+    }
+
+    // Поиск элементов интерфейса
+    private void findViews() {
         toolbar = findViewById(R.id.toolbar);
         swipeRefresh = findViewById(R.id.checkout_swipe_refresh);
         addressInput = findViewById(R.id.address_autocomplete);
@@ -63,200 +103,179 @@ public class CheckoutActivity extends AppCompatActivity {
         commentInput = findViewById(R.id.comment_input);
         totalText = findViewById(R.id.total_text);
         submitButton = findViewById(R.id.submit_order_button);
-        pickOnMapButton = findViewById(R.id.pick_on_map_button);
-
-        initToolbar();
-
-        addressAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
-        addressInput.setAdapter(addressAdapter);
-        // Внутри NestedScrollView иногда dropdown не привязывается корректно — задаём якорь явно.
-        try {
-            addressInput.setDropDownAnchor(R.id.address_autocomplete);
-        } catch (Throwable t) {
-            // ignore
-        }
-        // меньше порог => подсказки появляются раньше (и стабильнее для русской IME-композиции)
-        addressInput.setThreshold(2);
-
-        addressInput.addTextChangedListener(new SimpleTextWatcher() {
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                // afterTextChanged лучше работает с русской раскладкой (IME иногда не "коммитит" текст до пробела)
-                selectedPlaceId = null; // оставим как флаг "выбрано из подсказок" (не используем как id)
-                selectedLat = null;
-                selectedLon = null;
-                scheduleAddressSuggest(s == null ? "" : s.toString());
-            }
-        });
-
-        addressInput.setOnItemClickListener((parent, view, position, id) -> {
-            Object item = parent.getItemAtPosition(position);
-            if (item instanceof AddressSuggestion) {
-                AddressSuggestion s = (AddressSuggestion) item;
-                selectedPlaceId = s.getId();
-                selectedLat = s.getLat();
-                selectedLon = s.getLon();
-                // У 2ГИС suggest уже отдаёт готовую строку (обычно без "Россия,")
-                if (s.getText() != null) {
-                    try {
-                        addressInput.setText(s.getText(), false);
-                    } catch (Throwable t) {
-                        addressInput.setText(s.getText());
-                    }
-                    addressInput.setSelection(addressInput.getText().length());
-                }
-                // На всякий случай уточняем координаты через geocoder по выбранной строке
-                resolveSelectedAddress(s.getText());
-            }
-        });
-
-        swipeRefresh.setOnRefreshListener(this::loadInitialData);
-
-        submitButton.setOnClickListener(v -> submitOrder());
-        pickOnMapButton.setOnClickListener(v -> openMapPicker());
-
-        loadInitialData();
+        mapButton = findViewById(R.id.pick_on_map_button);
     }
 
-    private void initToolbar() {
-        if (toolbar == null) return;
+    // Настройка toolbar
+    private void setupToolbar() {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Оплата");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setDisplayShowTitleEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> finish());
-    }
-
-    private void openMapPicker() {
-        double lat = selectedLat != null ? selectedLat : 55.7558;
-        double lon = selectedLon != null ? selectedLon : 37.6173;
-        Intent intent = new Intent(CheckoutActivity.this, MapPickerActivity.class);
-        intent.putExtra(MapPickerActivity.EXTRA_LAT, lat);
-        intent.putExtra(MapPickerActivity.EXTRA_LON, lon);
-        startActivityForResult(intent, REQ_PICK_MAP);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_PICK_MAP && resultCode == RESULT_OK && data != null) {
-            selectedLat = data.getDoubleExtra(MapPickerActivity.RESULT_LAT, selectedLat != null ? selectedLat : 55.7558);
-            selectedLon = data.getDoubleExtra(MapPickerActivity.RESULT_LON, selectedLon != null ? selectedLon : 37.6173);
-            String addr = data.getStringExtra(MapPickerActivity.RESULT_TEXT);
-            if (addr != null && !addr.trim().isEmpty()) {
-                try {
-                    addressInput.setText(addr, false);
-                } catch (Throwable t) {
-                    addressInput.setText(addr);
-                }
-                addressInput.setSelection(addressInput.getText().length());
-            }
-            Toast.makeText(this, "Точка выбрана на карте", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void loadInitialData() {
-        swipeRefresh.setRefreshing(true);
-        loadMe();
-        loadCartTotal();
-    }
-
-    private void loadMe() {
-        apiService.getMe().enqueue(new Callback<User>() {
+        toolbar.setNavigationOnClickListener(new android.view.View.OnClickListener() {
             @Override
-            public void onResponse(Call<User> call, Response<User> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    User u = response.body();
-                    String defaultName = "";
-                    if (u.first_name != null) defaultName += u.first_name.trim();
-                    if (u.last_name != null && !u.last_name.trim().isEmpty()) {
-                        if (!defaultName.isEmpty()) defaultName += " ";
-                        defaultName += u.last_name.trim();
-                    }
-                    if (defaultName.isEmpty() && u.login != null) defaultName = u.login;
-
-                    nameInput.setText(defaultName);
-
-                    if (u.phone_number != null && !u.phone_number.trim().isEmpty()) {
-                        phoneInput.setText(u.phone_number.trim());
-                    }
-                } else {
-                    Toast.makeText(CheckoutActivity.this, "Не удалось загрузить профиль", Toast.LENGTH_SHORT).show();
-                }
-                stopRefreshingIfDone();
-            }
-
-            @Override
-            public void onFailure(Call<User> call, Throwable t) {
-                Toast.makeText(CheckoutActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                stopRefreshingIfDone();
+            public void onClick(android.view.View v) {
+                finish();
             }
         });
     }
 
+    // Настройка автодополнения адреса
+    private void setupAddressAutocomplete() {
+        addressAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
+        addressInput.setAdapter(addressAdapter);
+        addressInput.setThreshold(2);
+
+        // Слушатель изменения текста
+        addressInput.addTextChangedListener(new SimpleTextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                selectedLat = null;
+                selectedLon = null;
+                String text = (s != null) ? s.toString() : "";
+                scheduleAddressSearch(text);
+            }
+        });
+
+        // Выбор подсказки из списка
+        addressInput.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = parent.getItemAtPosition(position);
+            if (item instanceof AddressSuggestion) {
+                AddressSuggestion suggestion = (AddressSuggestion) item;
+                selectedLat = suggestion.getLat();
+                selectedLon = suggestion.getLon();
+
+                if (suggestion.getText() != null) {
+                    addressInput.setText(suggestion.getText());
+                    addressInput.setSelection(addressInput.getText().length());
+                }
+
+                getAddressCoordinates(suggestion.getText());
+            }
+        });
+    }
+
+    // Загрузка начальных данных
+    private void loadData() {
+        swipeRefresh.setRefreshing(true);
+        loadCount = 0;
+        loadProfile();
+        loadCartTotal();
+    }
+
+    // Проверка завершения загрузки
+    private void checkLoadComplete() {
+        loadCount++;
+        if (loadCount >= 2) {
+            swipeRefresh.setRefreshing(false);
+            loadCount = 0;
+        }
+    }
+
+    // Загрузка профиля пользователя
+    private void loadProfile() {
+        apiService.getMe().enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    User user = response.body();
+
+                    // Имя пользователя
+                    String name = "";
+                    if (user.first_name != null) {
+                        name = user.first_name.trim();
+                    }
+                    if (user.last_name != null && !user.last_name.trim().isEmpty()) {
+                        if (!name.isEmpty()) name += " ";
+                        name += user.last_name.trim();
+                    }
+                    if (name.isEmpty() && user.login != null) {
+                        name = user.login;
+                    }
+                    nameInput.setText(name);
+
+                    // Телефон
+                    if (user.phone_number != null && !user.phone_number.trim().isEmpty()) {
+                        phoneInput.setText(user.phone_number.trim());
+                    }
+                }
+                checkLoadComplete();
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                checkLoadComplete();
+            }
+        });
+    }
+
+    // Загрузка суммы корзины
     private void loadCartTotal() {
         apiService.getCart().enqueue(new Callback<CartResponse>() {
             @Override
             public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    currentTotal = response.body().getTotal();
-                    totalText.setText(String.format(Locale.getDefault(), "Сумма к оплате  %.0f ₽", currentTotal));
-                    submitButton.setEnabled(currentTotal > 0.0);
+                    orderTotal = response.body().getTotal();
+                    totalText.setText(String.format(Locale.getDefault(),
+                            "Сумма к оплате  %.0f ₽", orderTotal));
+                    submitButton.setEnabled(orderTotal > 0);
                 } else {
-                    Toast.makeText(CheckoutActivity.this, "Не удалось загрузить корзину", Toast.LENGTH_SHORT).show();
                     submitButton.setEnabled(false);
                 }
-                stopRefreshingIfDone();
+                checkLoadComplete();
             }
 
             @Override
             public void onFailure(Call<CartResponse> call, Throwable t) {
-                Toast.makeText(CheckoutActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 submitButton.setEnabled(false);
-                stopRefreshingIfDone();
+                checkLoadComplete();
             }
         });
     }
 
-    private int refreshDoneCount = 0;
-    private void stopRefreshingIfDone() {
-        refreshDoneCount++;
-        if (refreshDoneCount >= 2) {
-            swipeRefresh.setRefreshing(false);
-            refreshDoneCount = 0;
+    // Задержка перед поиском адреса
+    private void scheduleAddressSearch(String query) {
+        if (debounceRunnable != null) {
+            handler.removeCallbacks(debounceRunnable);
         }
+        debounceRunnable = new Runnable() {
+            @Override
+            public void run() {
+                searchAddress(query);
+            }
+        };
+        handler.postDelayed(debounceRunnable, 350);
     }
 
-    private void scheduleAddressSuggest(String query) {
-        if (addressDebounceRunnable != null) handler.removeCallbacks(addressDebounceRunnable);
-        addressDebounceRunnable = () -> fetchAddressSuggest(query);
-        handler.postDelayed(addressDebounceRunnable, 350);
-    }
-
-    private void fetchAddressSuggest(String query) {
-        // Важно: не делаем .trim() — для IME/русского ввода и пробелов в адресе так стабильнее.
-        String q = query == null ? "" : query;
-        if (q.length() < 2) {
+    // Поиск адресов
+    private void searchAddress(String query) {
+        if (query == null || query.length() < 2) {
             addressAdapter.clear();
             addressAdapter.notifyDataSetChanged();
             addressInput.dismissDropDown();
             return;
         }
 
-        apiService.addressSuggest(q).enqueue(new Callback<List<AddressSuggestion>>() {
+        apiService.addressSuggest(query).enqueue(new Callback<List<AddressSuggestion>>() {
             @Override
-            public void onResponse(Call<List<AddressSuggestion>> call, Response<List<AddressSuggestion>> response) {
+            public void onResponse(Call<List<AddressSuggestion>> call,
+                                   Response<List<AddressSuggestion>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<AddressSuggestion> items = response.body();
+                    List<AddressSuggestion> suggestions = response.body();
                     addressAdapter.clear();
-                    addressAdapter.addAll(items);
+                    addressAdapter.addAll(suggestions);
                     addressAdapter.notifyDataSetChanged();
-                    if (!items.isEmpty()) {
-                        // showDropDown() иногда игнорируется если вызвать "сразу" — делаем через post()
-                        addressInput.post(() -> {
-                            if (addressInput.isShown()) addressInput.showDropDown();
+
+                    if (!suggestions.isEmpty()) {
+                        addressInput.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (addressInput.isShown()) {
+                                    addressInput.showDropDown();
+                                }
+                            }
                         });
                     } else {
                         addressInput.dismissDropDown();
@@ -266,54 +285,82 @@ public class CheckoutActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<List<AddressSuggestion>> call, Throwable t) {
-                // тихо игнорируем, чтобы не спамить тостами при наборе
             }
         });
     }
 
-    private void resolveSelectedAddress(String addressText) {
-        if (addressText == null || addressText.trim().isEmpty()) return;
-        apiService.addressDetails(addressText).enqueue(new Callback<AddressDetails>() {
+    // Получение координат адреса
+    private void getAddressCoordinates(String address) {
+        if (address == null || address.trim().isEmpty()) return;
+
+        apiService.addressDetails(address).enqueue(new Callback<AddressDetails>() {
             @Override
             public void onResponse(Call<AddressDetails> call, Response<AddressDetails> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    AddressDetails d = response.body();
-                    selectedLat = d.getLat();
-                    selectedLon = d.getLon();
+                    AddressDetails details = response.body();
+                    selectedLat = details.getLat();
+                    selectedLon = details.getLon();
                 }
             }
 
             @Override
             public void onFailure(Call<AddressDetails> call, Throwable t) {
-                // не спамим тостами
             }
         });
     }
 
+    // Открытие карты для выбора адреса
+    private void openMap() {
+        double lat = (selectedLat != null) ? selectedLat : 55.7558;
+        double lon = (selectedLon != null) ? selectedLon : 37.6173;
+
+        Intent intent = new Intent(this, MapPickerActivity.class);
+        intent.putExtra(MapPickerActivity.EXTRA_LAT, lat);
+        intent.putExtra(MapPickerActivity.EXTRA_LON, lon);
+        startActivityForResult(intent, REQUEST_MAP);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_MAP && resultCode == RESULT_OK && data != null) {
+            selectedLat = data.getDoubleExtra(MapPickerActivity.RESULT_LAT, 55.7558);
+            selectedLon = data.getDoubleExtra(MapPickerActivity.RESULT_LON, 37.6173);
+            String address = data.getStringExtra(MapPickerActivity.RESULT_TEXT);
+
+            if (address != null && !address.trim().isEmpty()) {
+                addressInput.setText(address);
+                addressInput.setSelection(addressInput.getText().length());
+            }
+
+        }
+    }
+
+    // Оформление заказа
     private void submitOrder() {
-        String address = addressInput.getText() == null ? "" : addressInput.getText().toString().trim();
-        String name = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
-        String phone = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
-        String apartment = apartmentInput.getText() == null ? "" : apartmentInput.getText().toString().trim();
-        String comment = commentInput.getText() == null ? "" : commentInput.getText().toString().trim();
+        String address = getText(addressInput);
+        String name = getText(nameInput);
+        String phone = getText(phoneInput);
+        String apartment = getText(apartmentInput);
+        String comment = getText(commentInput);
 
         if (address.isEmpty()) {
-            Toast.makeText(this, "Введите адрес", Toast.LENGTH_SHORT).show();
             return;
         }
         if (name.isEmpty()) {
-            Toast.makeText(this, "Введите имя", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (currentTotal <= 0.0) {
-            Toast.makeText(this, "Корзина пуста", Toast.LENGTH_SHORT).show();
+        if (orderTotal <= 0) {
             return;
         }
 
+        // Блокируем кнопку
         submitButton.setEnabled(false);
         submitButton.setText("Оформляем...");
 
-        CheckoutRequest req = new CheckoutRequest(
+        // Создание запроса
+        CheckoutRequest request = new CheckoutRequest(
                 address,
                 apartment.isEmpty() ? null : apartment,
                 name,
@@ -321,17 +368,30 @@ public class CheckoutActivity extends AppCompatActivity {
                 comment.isEmpty() ? null : comment
         );
 
-        apiService.checkout(req).enqueue(new Callback<CheckoutResponse>() {
+        // Отправка его на сервер
+        apiService.checkout(request).enqueue(new Callback<CheckoutResponse>() {
             @Override
             public void onResponse(Call<CheckoutResponse> call, Response<CheckoutResponse> response) {
-                if (response.isSuccessful()) {
-                    Intent i = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
-                    startActivity(i);
+                if (response.isSuccessful() && response.body() != null) {
+                    CheckoutResponse result = response.body();
+                    
+                    // очистка локальной корзины после успешного заказа
+                    LocalCartStore.clear(CheckoutActivity.this);
+                    
+                    // отправка Push уведомление
+                    NotificationHelper.showOrderNotification(
+                            CheckoutActivity.this,
+                            result.getOrderId(),
+                            result.getTotal()
+                    );
+                    
+                    // Успех - переход на экран подтверждения
+                    Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
+                    startActivity(intent);
                     finish();
                 } else {
                     submitButton.setEnabled(true);
                     submitButton.setText("Оформить заказ");
-                    Toast.makeText(CheckoutActivity.this, "Ошибка оформления: " + response.code(), Toast.LENGTH_LONG).show();
                 }
             }
 
@@ -339,10 +399,15 @@ public class CheckoutActivity extends AppCompatActivity {
             public void onFailure(Call<CheckoutResponse> call, Throwable t) {
                 submitButton.setEnabled(true);
                 submitButton.setText("Оформить заказ");
-                Toast.makeText(CheckoutActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }
+
+    // Вспомогательный метод для получения текста из поля
+    private String getText(android.widget.EditText editText) {
+        if (editText == null || editText.getText() == null) {
+            return "";
+        }
+        return editText.getText().toString().trim();
+    }
 }
-
-

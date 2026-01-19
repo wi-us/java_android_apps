@@ -15,7 +15,6 @@ public class AddressSuggestion {
     @SerializedName("lon")
     private Double lon;
 
-    public String getId() { return id; }
     public String getText() { return text; }
     public Double getLat() { return lat; }
     public Double getLon() { return lon; }

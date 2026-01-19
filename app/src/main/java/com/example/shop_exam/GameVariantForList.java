@@ -7,12 +7,14 @@ public class GameVariantForList {
     @SerializedName("id")
     private int id;
     
+    @SerializedName("edition_name")
+    private String editionName;
+    
     @SerializedName("description")
     private String description;
     @SerializedName("image_link")
     private String imageLink;
 
-    // Поля цен
     @SerializedName("price")
     private double price;
     @SerializedName("discount_price")
@@ -24,8 +26,8 @@ public class GameVariantForList {
     @SerializedName("status")
     private Status status;
 
-    // Геттеры
     public int getId() { return id; }
+    public String getEditionName() { return editionName; }
     public String getDescription() { return description; }
     public String getImageLink() { return imageLink; }
     public double getPrice() { return price; }
@@ -37,7 +39,6 @@ public class GameVariantForList {
         return (discountPrice != null && discountPrice > 0) ? discountPrice : price;
     }
 
-    // Внутренний класс теперь содержит только базовую информацию об игре
     public static class GameInfo {
         @SerializedName("id")
         private int id;
@@ -50,7 +51,6 @@ public class GameVariantForList {
         @SerializedName("age_rating")
         private AgeRating ageRating;
 
-        public int getId() { return id; }
         public String getTitle() { return title; }
         public int getMinPlayers() { return minPlayers; }
         public int getMaxPlayers() { return maxPlayers; }

@@ -1,25 +1,26 @@
 package com.example.shop_exam;
 
 import android.annotation.SuppressLint;
+import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.StyleSpan;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.viewpager2.widget.ViewPager2;
 import androidx.core.content.ContextCompat;
-import android.content.res.ColorStateList;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.viewpager2.widget.ViewPager2;
+
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -29,240 +30,286 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import android.os.Handler;
-import android.os.Looper;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/**
+ * Экран с детальной информацией о товаре
+ */
 public class GameDetailActivity extends AppCompatActivity {
 
     public static final String EXTRA_GAME_ID = "extra_game_id";
-    private static final String TAG = "GameDetailActivity";
 
     private ViewPager2 imageSlider;
-    private TextView titleTextView, descriptionTextView;
-    private Button addToCartButton;
-    private Toolbar toolbar;
     private TabLayout sliderIndicator;
+    private TextView titleText;
+    private TextView descriptionText;
+    private Button cartButton;
+    private Toolbar toolbar;
     private SwipeRefreshLayout swipeRefresh;
-    private ApiService apiService;
-    private GameDetail currentGameVariant;
-    private int currentVariantId = -1;
 
-    private final Handler sliderHandler = new Handler(Looper.getMainLooper());
+    private ApiService apiService;
+    private int productId = -1;
+
+    // Для автоматического пролистывания слайдера
+    private Handler sliderHandler = new Handler(Looper.getMainLooper());
     private Runnable sliderRunnable;
-    private boolean sliderAutoEnabled = false;
+    private boolean autoSlideEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game_detail);
 
-        initViews();
-        initToolbar();
+        findViews();
+        setupToolbar();
         apiService = ApiClient.getClient(this).create(ApiService.class);
-
-        currentVariantId = getIntent().getIntExtra(EXTRA_GAME_ID, -1);
-        if (currentVariantId != -1) {
-            loadVariantDetails(currentVariantId);
-        } else {
-            Toast.makeText(this, "Ошибка: ID варианта не найден", Toast.LENGTH_LONG).show();
+        productId = getIntent().getIntExtra(EXTRA_GAME_ID, -1);
+        if (productId == -1) {
             finish();
+            return;
         }
 
-        // обработчик задаём в displayVariantDetails (чтобы учитывать статус)
-    }
+        loadProductDetails();
 
-    private void initViews() {
+        if (swipeRefresh != null) {
+            swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+                @Override
+                public void onRefresh() {
+                    loadProductDetails();
+                }
+            });
+        }
+    }
+    private void findViews() {
         toolbar = findViewById(R.id.toolbar);
         imageSlider = findViewById(R.id.image_slider);
         sliderIndicator = findViewById(R.id.slider_indicator);
         swipeRefresh = findViewById(R.id.detail_swipe_refresh);
-        titleTextView = findViewById(R.id.game_title_detail);
-        descriptionTextView = findViewById(R.id.game_description);
-        addToCartButton = findViewById(R.id.add_to_cart_button);
-
-        if (swipeRefresh != null) {
-            swipeRefresh.setOnRefreshListener(() -> {
-                if (currentVariantId != -1) loadVariantDetails(currentVariantId);
-            });
-        }
+        titleText = findViewById(R.id.game_title_detail);
+        descriptionText = findViewById(R.id.game_description);
+        cartButton = findViewById(R.id.add_to_cart_button);
     }
 
-    private void initToolbar() {
+    // Настройка toolbar
+    private void setupToolbar() {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
-        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+        toolbar.setNavigationOnClickListener(new android.view.View.OnClickListener() {
+            @Override
+            public void onClick(android.view.View v) {
+                onBackPressed();
+            }
+        });
     }
 
-    private void loadVariantDetails(int variantId) {
+    // Загрузка данных товара с сервера
+    private void loadProductDetails() {
         if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
-        apiService.getGameDetails(variantId).enqueue(new Callback<GameDetail>() {
+
+        apiService.getGameDetails(productId).enqueue(new Callback<GameDetail>() {
             @Override
             public void onResponse(Call<GameDetail> call, Response<GameDetail> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    currentGameVariant = response.body();
-                    displayVariantDetails(currentGameVariant);
-                } else {
-                    Toast.makeText(GameDetailActivity.this, "Не удалось загрузить детали", Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Ошибка загрузки: " + response.code() + " " + response.message());
-                }
                 if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
+
+                if (response.isSuccessful() && response.body() != null) {
+                    showProductDetails(response.body());
+                }
             }
 
             @Override
             public void onFailure(Call<GameDetail> call, Throwable t) {
-                Toast.makeText(GameDetailActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "Сетевая ошибка", t);
                 if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
             }
         });
     }
 
+    // Отображение данных товара
     @SuppressLint("DefaultLocale")
-    private void displayVariantDetails(GameDetail variant) {
-        // Возрастной фильтр: предупреждение/блокировка для 18+.
-        int minAge = 0;
-        try {
-            if (variant != null && variant.getGame() != null && variant.getGame().getAgeRating() != null) {
-                minAge = variant.getGame().getAgeRating().getMinAge();
-            }
-        } catch (Throwable ignored) {}
-        boolean isAdultContent = minAge >= 18;
-        if (isAdultContent && (!AgeGateStore.isAnswered(this) || !AgeGateStore.isAdultAllowed(this))) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Контент 18+")
-                    .setMessage("Вам уже есть 18 лет?")
-                    .setPositiveButton("Да", (d, w) -> {
-                        AgeGateStore.setAdultAllowed(this, true);
-                        displayVariantDetails(variant);
-                    })
-                    .setNegativeButton("Нет", (d, w) -> {
-                        AgeGateStore.setAdultAllowed(this, false);
-                        finish();
-                    })
-                    .setCancelable(false)
-                    .show();
+    private void showProductDetails(GameDetail product) {
+        // Проверяем возрастное ограничение
+        int age = 0;
+        if (product.getGame() != null && product.getGame().getAgeRating() != null) {
+            age = product.getGame().getAgeRating().getMinAge();
+        }
+
+        boolean isAdult = (age >= 18);
+        boolean answered = AgeGateStore.isAnswered(this);
+        boolean allowed = AgeGateStore.isAdultAllowed(this);
+
+        // Если контент 18+ и пользователь не подтвердил возраст
+        if (isAdult && (!answered || !allowed)) {
+            showAgeDialog(product);
             return;
         }
 
-        if (getSupportActionBar() != null && variant.getGame() != null) {
-            getSupportActionBar().setTitle(variant.getGame().getTitle());
+        // Заголовок в toolbar
+        if (getSupportActionBar() != null && product.getGame() != null) {
+            getSupportActionBar().setTitle(product.getGame().getTitle());
             getSupportActionBar().setDisplayShowTitleEnabled(true);
         }
 
-        titleTextView.setText(variant.getGame() != null ? variant.getGame().getTitle() : "Название не загружено");
-        descriptionTextView.setText(formatDescription(variant.getDescription()));
-
-        boolean isInStock = variant.getStatus() != null
-                && variant.getStatus().getName() != null
-                && variant.getStatus().getName().equalsIgnoreCase("В наличии");
-
-        if (isInStock) {
-            addToCartButton.setEnabled(true);
-            addToCartButton.setBackgroundTintList(
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_secondary))
-            );
-            
-            double price = variant.getPrice();
-            Double discountPrice = variant.getDiscountPrice();
-            String currency = "₽"; // Валюта теперь жестко задана
-
-            if (discountPrice != null && discountPrice > 0 && discountPrice < price) {
-                String oldPriceFormatted = String.format("%.0f", price);
-                String newPriceFormatted = String.format("%.0f", discountPrice);
-                String priceHtml = "В корзину за <small><strike>" + oldPriceFormatted + "</strike></small> <b>" + newPriceFormatted + " " + currency + "</b>";
-                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    addToCartButton.setText(Html.fromHtml(priceHtml, Html.FROM_HTML_MODE_COMPACT));
-                } else {
-                    addToCartButton.setText(Html.fromHtml(priceHtml));
-                }
-            } else {
-                String priceText = String.format("В корзину за %.0f %s", price, currency);
-                addToCartButton.setText(priceText);
-            }
-
+        // Название товара
+        if (product.getGame() != null) {
+            titleText.setText(product.getGame().getTitle());
         } else {
-            addToCartButton.setText("Нет в наличии");
-            addToCartButton.setEnabled(false);
-            addToCartButton.setBackgroundTintList(
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_disabled))
-            );
+            titleText.setText("Название не загружено");
         }
 
-        addToCartButton.setOnClickListener(v -> {
-            if (!isInStock) return;
-            try {
-                apiService.addToCart(new CartAddRequest(variant.getId(), 1)).enqueue(new Callback<CartResponse>() {
-                    @Override
-                    public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
-                        if (response.isSuccessful()) {
-                            Toast.makeText(GameDetailActivity.this, "Добавлено в корзину", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(GameDetailActivity.this, "Ошибка корзины: " + response.code(), Toast.LENGTH_LONG).show();
-                        }
-                    }
+        // Описание товара
+        descriptionText.setText(formatDescription(product.getDescription()));
 
-                    @Override
-                    public void onFailure(Call<CartResponse> call, Throwable t) {
-                        Toast.makeText(GameDetailActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Add to cart failed", e);
-                Toast.makeText(GameDetailActivity.this, "Ошибка корзины: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        // Проверерка наличия
+        boolean inStock = false;
+        if (product.getStatus() != null && product.getStatus().getName() != null) {
+            inStock = product.getStatus().getName().equalsIgnoreCase("В наличии");
+        }
+
+        // Кнопка корзины
+        setupCartButton(product, inStock);
+        // Слайдер изображений
+        setupImageSlider(product);
+    }
+
+    // Диалог подтверждения возраста
+    private void showAgeDialog(GameDetail product) {
+        new AlertDialog.Builder(this)
+                .setTitle("Контент 18+")
+                .setMessage("Вам уже есть 18 лет?")
+                .setPositiveButton("Да", (dialog, which) -> {
+                    AgeGateStore.setAdultAllowed(this, true);
+                    showProductDetails(product);
+                })
+                .setNegativeButton("Нет", (dialog, which) -> {
+                    AgeGateStore.setAdultAllowed(this, false);
+                    finish();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    // Настройка кнопки добавления в корзину
+    @SuppressLint("DefaultLocale")
+    private void setupCartButton(GameDetail product, boolean inStock) {
+        if (inStock) {
+            cartButton.setEnabled(true);
+            cartButton.setBackgroundTintList(
+                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_secondary)));
+
+            double price = product.getPrice();
+            Double discount = product.getDiscountPrice();
+
+            // Если есть скидка
+            if (discount != null && discount > 0 && discount < price) {
+                String oldPrice = String.format("%.0f", price);
+                String newPrice = String.format("%.0f", discount);
+                String html = "В корзину за <small><strike>" + oldPrice +
+                        "</strike></small> <b>" + newPrice + " ₽</b>";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    cartButton.setText(Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT));
+                } else {
+                    cartButton.setText(Html.fromHtml(html));
+                }
+            } else {
+                cartButton.setText(String.format("В корзину за %.0f ₽", price));
             }
-        });
+
+            // Обработчик нажатия
+            cartButton.setOnClickListener(new android.view.View.OnClickListener() {
+                @Override
+                public void onClick(android.view.View v) {
+                    addToCart(product);
+                }
+            });
+        } else {
+            // Товара нет в наличии
+            cartButton.setText("Нет в наличии");
+            cartButton.setEnabled(false);
+            cartButton.setBackgroundTintList(
+                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_disabled)));
+        }
+    }
+
+    // Добавление товара в корзину
+    private void addToCart(GameDetail product) {
+        LocalCartStore.addItem(this, product.getId(), 1);
         
-        List<String> imageUrls = new ArrayList<>();
-        if (variant.getImages() != null && !variant.getImages().isEmpty()) {
-            List<GameDetail.ImageInfo> imgs = new ArrayList<>(variant.getImages());
-            // cover -> first, then by sort_order if we have it (fallback: keep order)
-            Collections.sort(imgs, new Comparator<GameDetail.ImageInfo>() {
-                @Override public int compare(GameDetail.ImageInfo a, GameDetail.ImageInfo b) {
-                    if (a == null && b == null) return 0;
-                    if (a == null) return 1;
-                    if (b == null) return -1;
-                    if (a.isCover() != b.isCover()) return a.isCover() ? -1 : 1;
-                    // if model doesn't have sort_order, it will return 0
+        // Если авторизован - синхронизация с сервером
+        String token = TokenStore.getToken(this);
+        if (token != null && !token.isEmpty()) {
+            CartAddRequest request = new CartAddRequest(product.getId(), 1);
+            apiService.addToCart(request).enqueue(new Callback<CartResponse>() {
+                @Override
+                public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
+                    // Синхронизация завершена
+                }
+
+                @Override
+                public void onFailure(Call<CartResponse> call, Throwable t) {
+                    // Ошибка синхронизации - данные останутся локально
+                }
+            });
+        }
+    }
+
+    // Настройка слайдера изображений
+    private void setupImageSlider(GameDetail product) {
+        List<String> images = new ArrayList<>();
+
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            // Сортировка изображения - обложка первая
+            List<GameDetail.ImageInfo> imgList = new ArrayList<>(product.getImages());
+            Collections.sort(imgList, new Comparator<GameDetail.ImageInfo>() {
+                @Override
+                public int compare(GameDetail.ImageInfo a, GameDetail.ImageInfo b) {
+                    if (a.isCover() != b.isCover()) {
+                        return a.isCover() ? -1 : 1;
+                    }
                     return Integer.compare(a.getSortOrder(), b.getSortOrder());
                 }
             });
-            for (GameDetail.ImageInfo image : imgs) {
-                imageUrls.add(image != null ? image.getUrl() : "");
+
+            for (GameDetail.ImageInfo img : imgList) {
+                images.add(img.getUrl());
             }
         } else {
-            imageUrls.add("");
+            images.add(""); // Пустое изображение как заглушка
         }
-        ImageSliderAdapter sliderAdapter = new ImageSliderAdapter(this, imageUrls);
+
+        // Адаптер для слайдера
+        ImageSliderAdapter sliderAdapter = new ImageSliderAdapter(this, images);
         imageSlider.setAdapter(sliderAdapter);
 
-        // dots indicator
+        // Индикатор точками
         try {
-            new TabLayoutMediator(sliderIndicator, imageSlider, (tab, position) -> {}).attach();
+            new TabLayoutMediator(sliderIndicator, imageSlider,
+                    (tab, position) -> {}).attach();
         } catch (Exception e) {
-            Log.w(TAG, "TabLayoutMediator attach failed", e);
         }
 
-        setupAutoSlide(imageUrls.size());
+        // Автопролистывание
+        setupAutoSlide(images.size());
     }
 
+    // Настройка автоматического пролистывания
     private void setupAutoSlide(int count) {
-        sliderAutoEnabled = count > 1;
-        if (!sliderAutoEnabled) return;
+        autoSlideEnabled = (count > 1);
+        if (!autoSlideEnabled) return;
 
         if (sliderRunnable != null) {
             sliderHandler.removeCallbacks(sliderRunnable);
         }
 
         sliderRunnable = new Runnable() {
-            @Override public void run() {
-                if (!sliderAutoEnabled) return;
+            @Override
+            public void run() {
+                if (!autoSlideEnabled) return;
                 int next = imageSlider.getCurrentItem() + 1;
                 if (next >= count) next = 0;
                 imageSlider.setCurrentItem(next, true);
@@ -271,9 +318,10 @@ public class GameDetailActivity extends AppCompatActivity {
         };
         sliderHandler.postDelayed(sliderRunnable, 3500);
 
+        // Сбрасываем таймер при ручном пролистывании
         imageSlider.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override public void onPageSelected(int position) {
-                // reset timer on manual swipe
+            @Override
+            public void onPageSelected(int position) {
                 if (sliderRunnable != null) {
                     sliderHandler.removeCallbacks(sliderRunnable);
                     sliderHandler.postDelayed(sliderRunnable, 3500);
@@ -282,67 +330,78 @@ public class GameDetailActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (sliderRunnable != null) sliderHandler.removeCallbacks(sliderRunnable);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (sliderAutoEnabled && sliderRunnable != null) {
-            sliderHandler.removeCallbacks(sliderRunnable);
-            sliderHandler.postDelayed(sliderRunnable, 3500);
+    // Форматирование описания товара
+    private CharSequence formatDescription(String text) {
+        if (TextUtils.isEmpty(text)) {
+            return "Описание отсутствует.";
         }
-    }
 
-    private CharSequence formatDescription(String raw) {
-        if (TextUtils.isEmpty(raw)) return "Описание отсутствует.";
-
-        String text = raw.replace("\r\n", "\n").replace("\r", "\n").trim();
+        text = text.replace("\r\n", "\n").replace("\r", "\n").trim();
         String[] lines = text.split("\n");
 
+        // Слова которые считаются заголовками
         Set<String> headings = new HashSet<>();
         headings.add("комплектация");
         headings.add("правила");
         headings.add("описание");
         headings.add("характеристики");
 
-        SpannableStringBuilder out = new SpannableStringBuilder();
-        boolean lastWasEmpty = false;
+        SpannableStringBuilder result = new SpannableStringBuilder();
+        boolean lastEmpty = false;
 
         for (String line : lines) {
-            String s = line == null ? "" : line.trim();
+            String s = line.trim();
             if (s.isEmpty()) {
-                if (!lastWasEmpty) {
-                    out.append("\n\n");
+                if (!lastEmpty) {
+                    result.append("\n\n");
                 }
-                lastWasEmpty = true;
+                lastEmpty = true;
                 continue;
             }
-            lastWasEmpty = false;
+            lastEmpty = false;
 
             boolean isHeading = s.endsWith(":") || headings.contains(s.toLowerCase());
             boolean isBullet = s.startsWith("- ") || s.startsWith("• ") || s.startsWith("— ");
 
-            int start = out.length();
+            int start = result.length();
             if (isBullet) {
-                String item = s.substring(2).trim();
-                out.append("• ").append(item);
+                result.append("• ").append(s.substring(2).trim());
             } else {
-                out.append(s);
+                result.append(s);
             }
-            int end = out.length();
+            int end = result.length();
 
             if (isHeading) {
-                out.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                out.append("\n");
-            } else {
-                out.append("\n");
+                result.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
+                        start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
+            result.append("\n");
         }
 
-        return out.toString().trim();
+        return result;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (sliderRunnable != null) {
+            sliderHandler.removeCallbacks(sliderRunnable);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (autoSlideEnabled && sliderRunnable != null) {
+            sliderHandler.removeCallbacks(sliderRunnable);
+            sliderHandler.postDelayed(sliderRunnable, 3500);
+        }
     }
 }
+
+
+
+
+
+
+

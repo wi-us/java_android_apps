@@ -1,18 +1,27 @@
 package com.example.shop_exam;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.util.Patterns;
+import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.material.textfield.TextInputLayout;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/**
+ * Экран регистрации нового пользователя
+ */
 public class RegisterActivity extends AppCompatActivity {
 
-    private TextInputLayout emailInput, loginInput, passwordInput, confirmPasswordInput;
+    private TextInputLayout emailInput;
+    private TextInputLayout loginInput;
+    private TextInputLayout passwordInput;
+    private TextInputLayout confirmPasswordInput;
     private Button registerButton;
     private Button backButton;
     private ApiService apiService;
@@ -22,9 +31,9 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.registration);
 
+        // API
         apiService = ApiClient.getClient(this).create(ApiService.class);
 
-        // Привязка View
         emailInput = findViewById(R.id.email_input_layout);
         loginInput = findViewById(R.id.login_input_layout);
         passwordInput = findViewById(R.id.password_input_layout);
@@ -32,56 +41,110 @@ public class RegisterActivity extends AppCompatActivity {
         registerButton = findViewById(R.id.button_continue_registration);
         backButton = findViewById(R.id.button_back_to_login);
 
-        registerButton.setOnClickListener(v -> {
-            registerUser();
+        // Кнопка регистрации
+        registerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                register();
+            }
         });
 
-        backButton.setOnClickListener(v -> finish());
+        // Кнопка назад
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
     }
 
-    private void registerUser() {
-        String email = emailInput.getEditText().getText().toString().trim();
-        String login = loginInput.getEditText().getText().toString().trim();
-        String password = passwordInput.getEditText().getText().toString().trim();
-        String confirmPassword = confirmPasswordInput.getEditText().getText().toString().trim();
+    // Регистрация пользователя
+    private void register() {
+        // Очистка ошибок
+        clearErrors();
+
+        // Получаем данные из полей
+        String email = getTextFromInput(emailInput);
+        String login = getTextFromInput(loginInput);
+        String password = getTextFromInput(passwordInput);
+        String confirmPassword = getTextFromInput(confirmPasswordInput);
 
         // Валидация
-        if (email.isEmpty() || login.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Все поля должны быть заполнены", Toast.LENGTH_SHORT).show();
-            return;
+        boolean isValid = true;
+
+        // Проверка email
+        if (email.isEmpty()) {
+            emailInput.setError("Введите email");
+            isValid = false;
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            emailInput.setError("Некорректный email");
+            isValid = false;
         }
+
+        // Проверка логина
+        if (login.isEmpty()) {
+            loginInput.setError("Введите логин");
+            isValid = false;
+        } else if (login.length() < 4) {
+            loginInput.setError("Минимум 4 символа");
+            isValid = false;
+        } else if (!login.matches("^[a-zA-Z0-9._-]+$")) {
+            loginInput.setError("Только латинские буквы, цифры, . _ -");
+            isValid = false;
+        }
+
+        // Проверка пароля
+        if (password.isEmpty()) {
+            passwordInput.setError("Введите пароль");
+            isValid = false;
+        } else if (password.length() < 6) {
+            passwordInput.setError("Минимум 6 символов");
+            isValid = false;
+        }
+
+        // Проверка подтверждения пароля
         if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Пароли не совпадают", Toast.LENGTH_SHORT).show();
+            confirmPasswordInput.setError("Пароли не совпадают");
+            isValid = false;
+        }
+
+        if (!isValid) {
             return;
         }
 
-        // Создание и отправка запроса
+        // Создаём запрос
         RegisterRequest request = new RegisterRequest(email, password, login);
+
+        // Отправляем на сервер
         apiService.registerUser(request).enqueue(new Callback<RegisterResponse>() {
             @Override
             public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
                 if (response.isSuccessful()) {
-                    Toast.makeText(RegisterActivity.this, "Регистрация успешна! Теперь вы можете войти.", Toast.LENGTH_LONG).show();
-                    // Возвращаемся на экран входа после успешной регистрации
                     finish();
                 } else {
-                    String errorMsg = "Ошибка регистрации.";
-                    try {
-                        if (response.errorBody() != null) {
-                            // Пытаемся получить более детальную ошибку от сервера
-                            errorMsg += " " + response.errorBody().string();
-                        }
-                    } catch (Exception e) {
-                        // ignore
-                    }
-                    Toast.makeText(RegisterActivity.this, errorMsg, Toast.LENGTH_LONG).show();
+                    loginInput.setError("Логин уже занят");
                 }
             }
 
             @Override
             public void onFailure(Call<RegisterResponse> call, Throwable t) {
-                Toast.makeText(RegisterActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    // Сброс ошибок
+    private void clearErrors() {
+        emailInput.setError(null);
+        loginInput.setError(null);
+        passwordInput.setError(null);
+        confirmPasswordInput.setError(null);
+    }
+
+    // Вспомогательный метод для получения текста из TextInputLayout
+    private String getTextFromInput(TextInputLayout input) {
+        if (input != null && input.getEditText() != null) {
+            return input.getEditText().getText().toString().trim();
+        }
+        return "";
     }
 }

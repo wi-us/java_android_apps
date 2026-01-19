@@ -1,155 +1,200 @@
 package com.example.shop_exam;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Toast;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.android.material.badge.BadgeDrawable;
-import com.google.android.material.badge.BadgeUtils;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.ArrayList;
 import java.util.List;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/**
+ * Главный экран приложения с каталогом товаров
+ */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
-    private RecyclerView gamesRecyclerView;
-    private GameAdapter gameAdapter;
+    private RecyclerView recyclerView;
+    private GameAdapter adapter;
     private ApiService apiService;
     private SwipeRefreshLayout swipeRefresh;
-    private FloatingActionButton cartFab;
-    private BadgeDrawable cartBadge;
+    private FloatingActionButton cartButton;
+    private FloatingActionButton profileButton;
+    private LinearLayout errorLayout;
+    private Button retryButton;
+
+    // Запрос нескольких разрешений сразу
+    private final ActivityResultLauncher<String[]> permissionsLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {});
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Log.d(TAG, "MainActivity has started successfully!");
 
-        gamesRecyclerView = findViewById(R.id.games_recycler_view);
+        // Запрос всех необходимых разрешений
+        requestAllPermissions();
+
+        recyclerView = findViewById(R.id.games_recycler_view);
         swipeRefresh = findViewById(R.id.main_swipe_refresh);
-        cartFab = findViewById(R.id.cart_fab);
-        int spanCount = getResources().getInteger(R.integer.grid_column_count);
-        gamesRecyclerView.setLayoutManager(new GridLayoutManager(this, spanCount));
-        
-        if (cartFab != null) cartFab.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, CartActivity.class);
-            startActivity(intent);
-        });
+        cartButton = findViewById(R.id.cart_fab);
+        profileButton = findViewById(R.id.profile_fab);
+        errorLayout = findViewById(R.id.error_layout);
+        retryButton = findViewById(R.id.retry_button);
 
-        initApiService();
-        initCartBadge();
+        // Сетка товаров
+        int columns = getResources().getInteger(R.integer.grid_column_count);
+        recyclerView.setLayoutManager(new GridLayoutManager(this, columns));
 
-        // Каталог грузим сразу. Предупреждение 18+ показываем только при клике на 18+ товар.
-        fetchGameVariants();
+        // Кнопка корзины
+        if (cartButton != null) {
+            cartButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(MainActivity.this, CartActivity.class);
+                    startActivity(intent);
+                }
+            });
+        }
 
-        swipeRefresh.setOnRefreshListener(this::fetchGameVariants);
-    }
+        // Кнопка профиля
+        if (profileButton != null) {
+            profileButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String token = TokenStore.getToken(MainActivity.this);
+                    if (token != null && !token.isEmpty()) {
+                        Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+                        startActivity(intent);
+                    } else {
+                        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                        startActivity(intent);
+                    }
+                }
+            });
+        }
 
-    private void initApiService() {
+        // Кнопка повторной загрузки
+        if (retryButton != null) {
+            retryButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    loadProducts();
+                }
+            });
+        }
+
         apiService = ApiClient.getClient(this).create(ApiService.class);
+        loadProducts();
+
+        // Обновление свайпом вниз
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                loadProducts();
+            }
+        });
     }
 
-    private void initCartBadge() {
-        if (cartFab == null) return;
-        try {
-            cartBadge = BadgeDrawable.create(this);
-            cartBadge.setVisible(false);
-            cartBadge.setBackgroundColor(ContextCompat.getColor(this, R.color.color_secondary));
-            cartBadge.setBadgeTextColor(ContextCompat.getColor(this, R.color.white));
-            BadgeUtils.attachBadgeDrawable(cartBadge, cartFab);
-        } catch (Throwable t) {
-            // ignore (badge is optional)
+    // Запрос всех необходимых разрешений при запуске
+    private void requestAllPermissions() {
+        List<String> permissionsToRequest = new ArrayList<>();
+
+        // Разрешение на геолокацию
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+
+        // Разрешение на уведомления
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
+        // Если есть разрешения для запроса - запрашиваем
+        if (!permissionsToRequest.isEmpty()) {
+            permissionsLauncher.launch(permissionsToRequest.toArray(new String[0]));
         }
     }
 
-    // НОВЫЙ МЕТОД для загрузки ВАРИАНТОВ
-    private void fetchGameVariants() {
-        Log.d(TAG, "Fetching game variants from server...");
-        if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
+    // Показать экран ошибки
+    private void showError() {
+        recyclerView.setVisibility(View.GONE);
+        errorLayout.setVisibility(View.VISIBLE);
+    }
+
+    // Скрыть экран ошибки
+    private void hideError() {
+        errorLayout.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.VISIBLE);
+    }
+
+    // Загрузка списка товаров с сервера
+    private void loadProducts() {
+        swipeRefresh.setRefreshing(true);
+        hideError();
+
         apiService.getGameVariants().enqueue(new Callback<List<GameVariantForList>>() {
             @Override
-            public void onResponse(Call<List<GameVariantForList>> call, Response<List<GameVariantForList>> response) {
+            public void onResponse(Call<List<GameVariantForList>> call,
+                                   Response<List<GameVariantForList>> response) {
+                swipeRefresh.setRefreshing(false);
+
                 if (response.isSuccessful() && response.body() != null) {
-                    Log.d(TAG, "Variants fetched successfully. Count: " + response.body().size());
-                    displayVariants(response.body());
+                    hideError();
+                    showProducts(response.body());
                 } else {
-                    Log.e(TAG, "Failed to fetch variants. Code: " + response.code());
-                    Toast.makeText(MainActivity.this, "Не удалось загрузить товары", Toast.LENGTH_SHORT).show();
+                    showError();
                 }
-                if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
             }
 
             @Override
             public void onFailure(Call<List<GameVariantForList>> call, Throwable t) {
-                Log.e(TAG, "Network request failed for variants.", t);
-                Toast.makeText(MainActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
+                swipeRefresh.setRefreshing(false);
+                showError();
             }
         });
     }
 
-    // НОВЫЙ МЕТОД для отображения ВАРИАНТОВ
-    private void displayVariants(List<GameVariantForList> variantList) {
-        // Сортировка: "Нет в наличии" уводим вниз списка
-        Collections.sort(variantList, new Comparator<GameVariantForList>() {
-            @Override public int compare(GameVariantForList a, GameVariantForList b) {
-                boolean aIn = a != null && a.getStatus() != null && "В наличии".equalsIgnoreCase(a.getStatus().getName());
-                boolean bIn = b != null && b.getStatus() != null && "В наличии".equalsIgnoreCase(b.getStatus().getName());
-                if (aIn == bIn) return 0;
-                return aIn ? -1 : 1;
-            }
-        });
-        gameAdapter = new GameAdapter(MainActivity.this, variantList, this::refreshCartBadge);
-        gamesRecyclerView.setAdapter(gameAdapter);
-    }
-
-    private void refreshCartBadge() {
-        if (cartBadge == null || apiService == null) return;
-        apiService.getCart().enqueue(new Callback<CartResponse>() {
+    // Отображение списка товаров
+    private void showProducts(List<GameVariantForList> products) {
+        // Сортировка - товары в наличии показываем первыми
+        Collections.sort(products, new Comparator<GameVariantForList>() {
             @Override
-            public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
-                int count = 0;
-                if (response.isSuccessful() && response.body() != null && response.body().getItems() != null) {
-                    for (CartResponse.CartServerItem it : response.body().getItems()) {
-                        if (it == null) continue;
-                        count += Math.max(0, it.getQuantity());
-                    }
-                }
-                final int finalCount = count;
-                runOnUiThread(() -> {
-                    try {
-                        if (finalCount > 0) {
-                            cartBadge.setVisible(true);
-                            cartBadge.setNumber(finalCount);
-                        } else {
-                            cartBadge.clearNumber();
-                            cartBadge.setVisible(false);
-                        }
-                    } catch (Throwable ignored) {}
-                });
-            }
+            public int compare(GameVariantForList a, GameVariantForList b) {
+                boolean aInStock = a.getStatus() != null &&
+                        "В наличии".equalsIgnoreCase(a.getStatus().getName());
+                boolean bInStock = b.getStatus() != null &&
+                        "В наличии".equalsIgnoreCase(b.getStatus().getName());
 
-            @Override
-            public void onFailure(Call<CartResponse> call, Throwable t) {
-                // ignore
+                if (aInStock == bInStock) return 0;
+                return aInStock ? -1 : 1;
             }
         });
-    }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        refreshCartBadge();
+        adapter = new GameAdapter(this, products);
+        recyclerView.setAdapter(adapter);
     }
 }

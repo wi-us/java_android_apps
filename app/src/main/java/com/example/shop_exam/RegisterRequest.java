@@ -1,7 +1,6 @@
 package com.example.shop_exam;
 
 public class RegisterRequest {
-    // Fields must match the UserCreate schema in schemas.py
     final String email;
     final String password;
     final String login;

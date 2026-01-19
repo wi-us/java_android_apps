@@ -1,50 +1,57 @@
 package com.example.shop_exam;
 
 import android.content.Context;
+
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+import java.io.IOException;
+
+/**
+ * Класс для создания HTTP-клиента
+ */
 public class ApiClient {
 
-    private static final String BASE_URL = "http://5.141.90.239:8003/";
+    // Адрес сервера
+    private static final String BASE_URL = "https://shop41.wi-us.ru/";
+
     private static Retrofit retrofit = null;
 
-    public static String getBaseUrl() {
-        return BASE_URL;
-    }
+    // Преобразование относительных URL в полные
+    public static String resolveUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
 
-    /**
-     * Normalizes URLs coming from backend:
-     * - "/cache/..." -> "http://10.0.2.2:8003/cache/..."
-     * - "cache/..."  -> "http://10.0.2.2:8003/cache/..."
-     * - "http://127.0.0.1:8003/..." or "http://localhost:8003/..." -> replace host with 10.0.2.2
-     * - "//cdn..." -> "https://cdn..."
-     */
-    public static String resolveUrl(String rawUrl) {
-        if (rawUrl == null) return null;
-        String url = rawUrl.trim();
-        if (url.isEmpty()) return url;
-
+        // URL начинается с "//"
         if (url.startsWith("//")) {
             return "https:" + url;
         }
 
-        String base = BASE_URL.endsWith("/") ? BASE_URL.substring(0, BASE_URL.length() - 1) : BASE_URL;
+        // Получаем базовый URL без слеша на конце
+        String base = BASE_URL;
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
 
+        // URL начинается с "/"
         if (url.startsWith("/")) {
             return base + url;
         }
 
+        // URL начинается с "cache/"
         if (url.startsWith("cache/")) {
             return base + "/" + url;
         }
 
+        // URL с localhost - заменяем на наш сервер
         if (url.startsWith("http://127.0.0.1:8003/")) {
             return base + url.substring("http://127.0.0.1:8003".length());
         }
-
         if (url.startsWith("http://localhost:8003/")) {
             return base + url.substring("http://localhost:8003".length());
         }
@@ -52,43 +59,53 @@ public class ApiClient {
         return url;
     }
 
+    // Создание клиента Retrofit
     public static Retrofit getClient(Context context) {
         if (retrofit == null) {
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .addInterceptor(new AuthInterceptor(context))
+                    .build();
 
-            httpClient.addInterceptor(chain -> {
-                Request original = chain.request();
-                String token = TokenStore.getToken(context);
-                // 2GIS key (for address suggest/geocode via backend fallback)
-                String dgisKey = null;
-                try {
-                    dgisKey = context.getString(R.string.dgis_map_key);
-                } catch (Exception e) {
-                    // ignore
-                }
-                if (token == null || token.isEmpty()) {
-                    Request.Builder b = original.newBuilder();
-                    if (dgisKey != null && !dgisKey.trim().isEmpty()) {
-                        b.header("X-DGIS-KEY", dgisKey.trim());
-                    }
-                    return chain.proceed(b.build());
-                }
-                Request.Builder builder = original.newBuilder()
-                        .header("Authorization", "Bearer " + token)
-                        ;
-                if (dgisKey != null && !dgisKey.trim().isEmpty()) {
-                    builder.header("X-DGIS-KEY", dgisKey.trim());
-                }
-                return chain.proceed(builder.build());
-            });
-            
             retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
-                    .client(httpClient.build())
+                    .client(client)
                     .build();
         }
         return retrofit;
     }
-}
 
+    /**
+     * Перехватчик для добавления заголовков к запросам.
+     * Добавляет токен авторизации и API-ключ 2ГИС.
+     */
+    private static class AuthInterceptor implements Interceptor {
+        private Context context;
+
+        public AuthInterceptor(Context context) {
+            this.context = context;
+        }
+
+            @Override
+            public Response intercept(Chain chain) throws IOException {
+                Request original = chain.request();
+                Request.Builder builder = original.newBuilder();
+
+                // Токен авторизации
+                String token = TokenStore.getToken(context);
+                if (token != null && !token.isEmpty()) {
+                    builder.header("Authorization", "Bearer " + token);
+                }
+
+                // API-ключ 2ГИС
+                try {
+                    String dgisKey = context.getString(R.string.dgis_map_key);
+                    if (dgisKey != null && !dgisKey.isEmpty()) {
+                        builder.header("X-DGIS-KEY", dgisKey);
+                    }
+                } catch (Exception e) {}
+
+                return chain.proceed(builder.build());
+            }
+    }
+}

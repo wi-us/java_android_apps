@@ -13,6 +13,8 @@ public class GameDetail {
     private double price;
     @SerializedName("discount_price")
     private Double discountPrice;
+    @SerializedName("image_link")
+    private String imageLink;
     
     @SerializedName("game")
     private GameInfo game;
@@ -26,11 +28,11 @@ public class GameDetail {
     @SerializedName("images")
     private List<ImageInfo> images;
 
-    // Геттеры
     public int getId() { return id; }
     public String getDescription() { return description; }
     public double getPrice() { return price; }
     public Double getDiscountPrice() { return discountPrice; }
+    public String getImageLink() { return imageLink; }
     public GameInfo getGame() { return game; }
     public StockInfo getStock() { return stock; }
     public Status getStatus() { return status; }
