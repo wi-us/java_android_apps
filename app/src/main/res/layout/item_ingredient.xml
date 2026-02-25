@@ -10,14 +10,9 @@
         style="@style/TextAppearance.App.Body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:lineSpacingExtra="2dp"
         android:textSize="15sp"
         tools:text="Тыква 400 г" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E0E0E0" />
 </LinearLayout>
