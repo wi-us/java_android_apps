@@ -52,7 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/app_space_sm"
-            android:text="@string/filter_cuisine" />
+            android:text="@string/filter_kitchen" />
 
         <Spinner
             android:id="@+id/spinner_cuisine"

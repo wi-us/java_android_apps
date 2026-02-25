@@ -8,9 +8,8 @@
     <string name="lang_spanish">Español</string>
     <string name="language_dialog_title">Elige el idioma</string>
     <string name="back">Atrás</string>
-    <string name="photo_dish">Foto del plato</string>
     <string name="photo_ingredients">Foto de ingredientes</string>
-    <string name="filter_cuisine">Cocina</string>
+    <string name="filter_kitchen">Cocina</string>
     <string name="filter_meal_type">Tipo de comida</string>
     <string name="filter_all">Todos</string>
     <string name="meal_breakfast">Desayuno</string>

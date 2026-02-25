@@ -2,15 +2,14 @@
     <string name="app_name">42 Food</string>
     <string name="choose_language">Язык</string>
     <string name="ingredients">Ингредиенты</string>
-    <string name="steps">Приготовление</string>
+    <string name="steps">Шаги</string>
     <string name="lang_russian">Русский</string>
     <string name="lang_english">English</string>
     <string name="lang_spanish">Español</string>
     <string name="language_dialog_title">Выберите язык</string>
     <string name="back">Назад</string>
-    <string name="photo_dish">Фото блюда</string>
     <string name="photo_ingredients">Фото ингредиентов</string>
-    <string name="filter_cuisine">Кухня</string>
+    <string name="filter_kitchen">Кухня</string>
     <string name="filter_meal_type">Тип блюда</string>
     <string name="filter_all">Все</string>
     <string name="meal_breakfast">Завтрак</string>

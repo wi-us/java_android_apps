@@ -55,20 +55,11 @@
                 android:layout_marginTop="@dimen/app_space_md"
                 tools:text="Пирог из тыквы" />
 
-            <!-- Контейнер для фото готового блюда -->
-            <TextView
-                android:id="@+id/label_photo_dish"
-                style="@style/TextAppearance.App.BodySecondary"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/app_space_md"
-                android:text="@string/photo_dish" />
             <ImageView
                 android:id="@+id/recipe_photo_dish"
                 android:layout_width="match_parent"
                 android:layout_height="180dp"
-                android:layout_marginTop="@dimen/app_space_xs"
-                android:contentDescription="@string/photo_dish"
+                android:layout_marginTop="@dimen/app_space_md"
                 android:scaleType="fitCenter"
                 android:background="@drawable/placeholder_recipe" />
 
