@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Potion Craft: гриб/минерал -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M11,14h2v6h-2z"/>
+    <path
+        android:fillColor="#A1887F"
+        android:pathData="M8,14h8v3q0,2 -4,2 -4,0 -4,-2z"/>
+</vector>

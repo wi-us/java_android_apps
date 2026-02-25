@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/app_space_md"
+    tools:context=".RecipeActivity">
+
+    <ImageButton
+        android:id="@+id/btn_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/back"
+        android:padding="@dimen/app_icon_margin"
+        android:layout_marginStart="@dimen/app_icon_margin"
+        android:layout_marginTop="@dimen/app_icon_margin"
+        android:src="@drawable/ic_arrow_back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/btn_language"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@null"
+        android:contentDescription="@string/choose_language"
+        android:scaleType="fitCenter"
+        android:layout_marginEnd="@dimen/app_icon_margin"
+        android:layout_marginTop="@dimen/app_icon_margin"
+        android:src="@drawable/ic_globe"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btn_back">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="@dimen/app_space_lg">
+
+            <TextView
+                android:id="@+id/recipe_title"
+                style="@style/TextAppearance.App.Headline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_md"
+                tools:text="Пирог из тыквы" />
+
+            <!-- Контейнер для фото готового блюда -->
+            <TextView
+                android:id="@+id/label_photo_dish"
+                style="@style/TextAppearance.App.BodySecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_md"
+                android:text="@string/photo_dish" />
+            <ImageView
+                android:id="@+id/recipe_photo_dish"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="@dimen/app_space_xs"
+                android:contentDescription="@string/photo_dish"
+                android:scaleType="fitCenter"
+                android:background="@drawable/placeholder_recipe" />
+
+            <TextView
+                android:id="@+id/label_ingredients"
+                style="@style/TextAppearance.App.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_lg"
+                android:text="@string/ingredients" />
+
+            <LinearLayout
+                android:id="@+id/ingredients_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_xs"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/label_steps"
+                style="@style/TextAppearance.App.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_lg"
+                android:text="@string/steps" />
+
+            <LinearLayout
+                android:id="@+id/steps_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_xs"
+                android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>

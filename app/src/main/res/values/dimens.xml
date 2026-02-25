@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="app_corner_radius">12dp</dimen>
+    <dimen name="app_space_xs">6dp</dimen>
+    <dimen name="app_space_sm">10dp</dimen>
+    <dimen name="app_space_md">16dp</dimen>
+    <dimen name="app_space_lg">24dp</dimen>
+
+    <!-- отступы от краёв и между иконкой и текстом -->
+    <dimen name="app_icon_margin">12dp</dimen>
+    <dimen name="language_flag_size">32dp</dimen>
+
+    <dimen name="app_input_min_height">56dp</dimen>
+    <dimen name="app_input_padding_vertical">14dp</dimen>
+    <dimen name="app_button_height">48dp</dimen>
+    <dimen name="app_button_height_small">40dp</dimen>
+
+    <!-- Карточка рецепта в списке кухни: фиксированная высота, изображение масштабируется с сохранением пропорций -->
+    <dimen name="recipe_card_height">160dp</dimen>
+</resources>
+
+
+

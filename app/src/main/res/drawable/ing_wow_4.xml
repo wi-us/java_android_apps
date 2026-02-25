@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WoW: зерно/мука (мешок) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#DEB887"
+        android:pathData="M6,8h12v10h-12z"/>
+    <path
+        android:fillColor="#D2691E"
+        android:pathData="M6,8L12,4l6,4"/>
+</vector>

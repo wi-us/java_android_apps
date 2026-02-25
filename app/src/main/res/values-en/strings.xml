@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">42 Food</string>
+    <string name="choose_language">Language</string>
+    <string name="ingredients">Ingredients</string>
+    <string name="steps">Steps</string>
+    <string name="lang_russian">Russian</string>
+    <string name="lang_english">English</string>
+    <string name="lang_spanish">Spanish</string>
+    <string name="language_dialog_title">Choose language</string>
+    <string name="back">Back</string>
+    <string name="photo_dish">Dish photo</string>
+    <string name="photo_ingredients">Ingredients photo</string>
+    <string name="filter_cuisine">Cuisine</string>
+    <string name="filter_meal_type">Meal type</string>
+    <string name="filter_all">All</string>
+    <string name="meal_breakfast">Breakfast</string>
+    <string name="meal_lunch">Lunch</string>
+    <string name="meal_dinner">Dinner</string>
+    <string name="filter_show">Filters</string>
+</resources>

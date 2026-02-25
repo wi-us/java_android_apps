@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Плейсхолдер, когда своё фото ещё не загружено -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/color_disabled" />
+    <corners android:radius="@dimen/app_corner_radius" />
+</shape>

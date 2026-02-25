@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/recipe_card_height"
+    android:layout_marginBottom="@dimen/app_space_sm"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="@dimen/app_corner_radius"
+    app:cardElevation="4dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/recipe_card_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:background="@drawable/placeholder_recipe" />
+
+        <TextView
+            android:id="@+id/recipe_card_name"
+            style="@style/TextAppearance.App.Body"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="@dimen/app_space_sm"
+            android:background="#CC000000"
+            android:paddingHorizontal="@dimen/app_space_sm"
+            android:paddingVertical="@dimen/app_space_xs"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            tools:text="Пирог из тыквы" />
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView>

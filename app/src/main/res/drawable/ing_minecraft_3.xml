@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Minecraft: гриб (красно-белый пиксель) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M10,14h4v6h-4z"/>
+    <path
+        android:fillColor="#FFF8DC"
+        android:pathData="M8,8h8v6h-8z"/>
+    <path
+        android:fillColor="#CD5C5C"
+        android:pathData="M8,8h2v2h-2zM14,8h2v2h-2zM11,10h2v2h-2z"/>
+</vector>
