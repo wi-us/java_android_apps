@@ -16,4 +16,6 @@
     <string name="meal_lunch">Comida</string>
     <string name="meal_dinner">Cena</string>
     <string name="filter_show">Filtros</string>
+    <string name="play_voice">Escuchar</string>
+    <string name="stop_voice">Detener</string>
 </resources>

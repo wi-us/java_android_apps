@@ -13,7 +13,7 @@ import java.util.List;
 public class RecipeDbHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "recipes.db";
-    private static final int DB_VERSION = 11;
+    private static final int DB_VERSION = 13;
 
     private static final String TABLE_BOOKS = "cookbooks";
     private static final String TABLE_RECIPES = "recipes";
@@ -65,6 +65,7 @@ public class RecipeDbHelper extends SQLiteOpenHelper {
         insertBook(db, "Кухня World of Warcraft", "World of Warcraft Cookbook", "Libro de cocina de World of Warcraft");
         insertBook(db, "Славные рецепты", "Glorious Recipes", "Recetas gloriosas");
         insertBook(db, "Кухня Minecraft", "Minecraft Cookbook", "Libro de cocina de Minecraft");
+        insertBook(db, "Оригинальные рецепты", "Original Recipes", "Recetas originales");
 
         insertRecipe(db, 1,
                 "Пирог из тыквы", "Pumpkin Pie", "Tarta de calabaza",
@@ -194,6 +195,16 @@ public class RecipeDbHelper extends SQLiteOpenHelper {
                 "Dissolve yeast in warm water with sugar.||Mix with flour and salt, knead. Rise 1 hour.||Shape loaf, bake 35–40 min at 200 °C.||Just like crafting bread in Minecraft.",
                 "Disolver levadura en agua tibia con azúcar.||Mezclar con harina y sal, amasar. Dejar levar 1 h.||Formar barra, hornear 35–40 min a 200 °C.||Listo.",
                 "", "ing_minecraft_1||ing_minecraft_2||ing_minecraft_3||ing_minecraft_4||ing_minecraft_1", "breakfast");
+
+        insertRecipe(db, 4,
+                "Запеченный кролик с розмарином и трюфелями", "Baked Rabbit with Rosemary and Truffles", "Conejo al horno con romero y trufa",
+                "Тушка кролика 1 шт (около 1,2 кг)||Оливковое масло 3 ст.л.||Розмарин свежий 3 веточки||Чеснок 4 зубчика||Трюфельное масло 2 ст.л.||Чёрный трюфель 30 г (или трюфельная паста 1 ст.л.)||Соль и перец по вкусу||Белое сухое вино 100 мл",
+                "1 whole rabbit (about 1.2 kg)||3 tbsp olive oil||3 sprigs fresh rosemary||4 cloves garlic||2 tbsp truffle oil||30 g black truffle (or 1 tbsp truffle paste)||Salt and pepper to taste||100 ml dry white wine",
+                "1 conejo entero (unos 1,2 kg)||3 cucharadas aceite de oliva||3 ramitas de romero fresco||4 dientes de ajo||2 cucharadas aceite de trufa||30 g trufa negra (o 1 cucharada pasta de trufa)||Sal y pimienta al gusto||100 ml vino blanco seco",
+                "Кролика вымыть, обсушить, натереть солью и перцем.||Смешать оливковое и трюфельное масло, смазать тушку снаружи и изнутри.||Положить внутрь розмарин и чеснок, часть трюфеля нарезать пластинами.||Выложить кролика в форму для запекания, полить вином. Духовку разогреть до 180 °C, запекать 50–60 мин, поливая соком.||Перед подачей посыпать оставшимся трюфелем и розмарином.",
+                "Rinse and dry the rabbit, rub with salt and pepper.||Mix olive and truffle oil, brush the rabbit inside and out.||Place rosemary and garlic inside, slice some truffle.||Put rabbit in a roasting pan, add wine. Preheat oven to 180 °C, roast 50–60 min, basting.||Before serving, top with remaining truffle and rosemary.",
+                "Lavar y secar el conejo, frotar con sal y pimienta.||Mezclar aceite de oliva y de trufa, untar el conejo por dentro y por fuera.||Poner dentro romero y ajo, cortar parte de la trufa en láminas.||Colocar el conejo en bandeja de horno, añadir vino. Hornear a 180 °C 50–60 min, rociando con jugo.||Antes de servir, espolvorear con trufa y romero restantes.",
+                "img_0040161", "", "dinner");
     }
 
     private void insertBook(SQLiteDatabase db, String ru, String en, String es) {

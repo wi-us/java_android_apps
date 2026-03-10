@@ -51,4 +51,8 @@ dependencies {
     // Retrofit для работы с сетью
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
 
+    // ExoPlayer — стабильный вывод видео (картинка + звук)
+    implementation("androidx.media3:media3-exoplayer:1.2.0")
+    implementation("androidx.media3:media3-ui:1.2.0")
+
 }

@@ -2,7 +2,10 @@ package com.example.a4_2_food;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -21,10 +24,14 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int LAUNCH_SOUND_MAX_MS = 5000;
+
     private RecipeDbHelper dbHelper;
     private String lang;
     private List<Cookbook> books;
     private LinearLayout recipesContainer;
+    private MediaPlayer launchPlayer;
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -76,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
 
         applyFilters();
 
+        playLaunchSound();
+
         View filterToggleRow = findViewById(R.id.filter_toggle_row);
         View filterContainer = findViewById(R.id.filter_container);
         filterToggleRow.setOnClickListener(v -> {
@@ -116,16 +125,58 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setRecipeThumb(ImageView imageView, String drawableName) {
+        int resId = 0;
         if (drawableName != null && !drawableName.isEmpty()) {
-            int resId = getResources().getIdentifier(drawableName, "drawable", getPackageName());
-            if (resId != 0) imageView.setImageResource(resId);
+            resId = getResources().getIdentifier(drawableName, "drawable", getPackageName());
         }
+        imageView.setImageResource(resId != 0 ? resId : R.drawable.placeholder_recipe);
     }
 
     private void openRecipe(long recipeId) {
+        playTransitionSound();
         Intent i = new Intent(this, RecipeActivity.class);
         i.putExtra(RecipeActivity.EXTRA_RECIPE_ID, recipeId);
         startActivity(i);
+    }
+
+    private void playLaunchSound() {
+        int resId = getResources().getIdentifier("launch_sound", "raw", getPackageName());
+        if (resId == 0) return;
+        try {
+            launchPlayer = MediaPlayer.create(this, resId);
+            if (launchPlayer != null) {
+                launchPlayer.start();
+                handler.postDelayed(this::stopLaunchSound, LAUNCH_SOUND_MAX_MS);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void stopLaunchSound() {
+        if (launchPlayer != null) {
+            try {
+                if (launchPlayer.isPlaying()) launchPlayer.stop();
+                launchPlayer.release();
+            } catch (Exception ignored) {}
+            launchPlayer = null;
+        }
+    }
+
+    private void playTransitionSound() {
+        int resId = getResources().getIdentifier("screen_transition", "raw", getPackageName());
+        if (resId == 0) return;
+        try {
+            MediaPlayer mp = MediaPlayer.create(this, resId);
+            if (mp != null) {
+                mp.setOnCompletionListener(MediaPlayer::release);
+                mp.start();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopLaunchSound();
     }
 
     private void showLanguageDialog() {

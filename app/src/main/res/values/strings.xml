@@ -16,4 +16,6 @@
     <string name="meal_lunch">Обед</string>
     <string name="meal_dinner">Ужин</string>
     <string name="filter_show">Фильтры</string>
+    <string name="play_voice">Озвучить</string>
+    <string name="stop_voice">Остановить</string>
 </resources>

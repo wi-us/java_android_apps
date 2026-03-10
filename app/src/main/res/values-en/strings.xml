@@ -16,4 +16,6 @@
     <string name="meal_lunch">Lunch</string>
     <string name="meal_dinner">Dinner</string>
     <string name="filter_show">Filters</string>
+    <string name="play_voice">Play voice</string>
+    <string name="stop_voice">Stop voice</string>
 </resources>

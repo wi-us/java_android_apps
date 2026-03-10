@@ -2,26 +2,42 @@ package com.example.a4_2_food;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.MediaController;
 import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.VideoView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class RecipeActivity extends AppCompatActivity {
 
     public static final String EXTRA_RECIPE_ID = "recipe_id";
+    private static final String TAG = "RecipeActivity";
 
     private String lang;
     private Recipe recipe;
+    private TextToSpeech tts;
+    private VideoView videoPlayer;
+    private Button btnVoice;
+    private boolean isSpeaking = false;
+    
+    // Плеер для управления озвучкой
+    Button playButton, pauseButton, stopButton;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -45,10 +61,191 @@ public class RecipeActivity extends AppCompatActivity {
             fillIngredientsContainer();
             fillStepsContainer();
             loadRecipeImage(R.id.recipe_photo_dish, recipe.getDishImageName());
+            setupMediaForRecipe(); // Видео только для рецепта с кроликом
+            setupAudioPlayerForAll(); // Плеер озвучки для всех рецептов
         }
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         findViewById(R.id.btn_language).setOnClickListener(v -> showLanguageDialog());
+    }
+
+    private boolean isRecipeWithVideo() {
+        if (recipe == null) return false;
+        String nameRu = recipe.getName("ru");
+        String nameEn = recipe.getName("en");
+        return (nameRu != null && nameRu.contains("кролик"))
+                || (nameEn != null && nameEn.toLowerCase().contains("rabbit"));
+    }
+
+    private void setupMediaForRecipe() {
+        if (recipe == null || !isRecipeWithVideo()) return;
+
+        View container = findViewById(R.id.recipe_video_container);
+        videoPlayer = findViewById(R.id.recipe_video);
+        container.setVisibility(View.VISIBLE);
+        videoPlayer.setVisibility(View.VISIBLE);
+
+        Uri myVideoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.recipe_video);
+        videoPlayer.setVideoURI(myVideoUri);
+        MediaController mediaController = new MediaController(this);
+        videoPlayer.setMediaController(mediaController);
+        mediaController.setMediaPlayer(videoPlayer);
+
+    }
+
+    
+    private void startSpeech() {
+        if (recipe == null || tts == null) return;
+        String toSpeak = recipe.getName(lang) + ". ";
+        for (String step : recipe.getStepsList(lang)) {
+            toSpeak += step + ". ";
+        }
+        
+        android.os.Bundle params = new android.os.Bundle();
+        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "recipe_speech");
+        
+        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, params, "recipe_speech");
+    }
+    
+    private void stopSpeech() {
+        if (tts != null) {
+            tts.stop();
+            isSpeaking = false;
+            updatePlayerButtons();
+        }
+    }
+    
+
+    // Инициализация TTS для плеера
+    private void setupTTSForPlayer() {
+        // Скрываем старую кнопку "Озвучить" - теперь используем плеер
+        btnVoice = findViewById(R.id.btn_play_voice);
+        btnVoice.setVisibility(View.GONE);
+        
+        // Инициализация TextToSpeech
+        tts = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.SUCCESS) return;
+            
+            // Выбираем язык
+            Locale locale = "en".equals(lang) ? Locale.ENGLISH : 
+                           ("es".equals(lang) ? new Locale("es") : new Locale("ru"));
+            
+            if (tts.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) {
+                tts.setLanguage(locale);
+            }
+            
+            // Отслеживание состояния речи
+            tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                @Override
+                public void onStart(String utteranceId) {
+                    runOnUiThread(() -> {
+                        isSpeaking = true;
+                        updatePlayerButtons();
+                    });
+                }
+
+                @Override
+                public void onDone(String utteranceId) {
+                    runOnUiThread(() -> {
+                        isSpeaking = false;
+                        updatePlayerButtons();
+                    });
+                }
+
+                @Override
+                public void onError(String utteranceId) {
+                    runOnUiThread(() -> {
+                        isSpeaking = false;
+                        updatePlayerButtons();
+                    });
+                }
+            });
+        });
+    }
+
+    // Плеер для озвучки страницы для всех рецептов
+    private void setupAudioPlayerForAll() {
+        View audioContainer = findViewById(R.id.audio_player_container);
+        audioContainer.setVisibility(View.VISIBLE);
+
+        // Находим кнопки плеера
+        playButton = findViewById(R.id.playButton);
+        pauseButton = findViewById(R.id.pauseButton);
+        stopButton = findViewById(R.id.stopButton);
+
+        // Инициализация TTS для озвучки
+        setupTTSForPlayer();
+
+        // Начальное состояние кнопок - только Play активна
+        updatePlayerButtons();
+    }
+
+
+    // Методы управления озвучкой страницы через плеер
+    public void play(View view){
+        startSpeech();
+        updatePlayerButtons();
+    }
+
+    public void pause(View view){
+        stopSpeech(); // TTS не поддерживает паузу, только остановку
+        updatePlayerButtons();
+    }
+
+    public void stop(View view){
+        stopSpeech();
+        updatePlayerButtons();
+    }
+
+    // Обновление состояния кнопок плеера
+    private void updatePlayerButtons() {
+        if (playButton == null || pauseButton == null || stopButton == null) return;
+        
+        if (isSpeaking) {
+            playButton.setEnabled(false);
+            pauseButton.setEnabled(true);
+            stopButton.setEnabled(true);
+        } else {
+            playButton.setEnabled(true);
+            pauseButton.setEnabled(false);
+            stopButton.setEnabled(false);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
+        }
+        if (videoPlayer != null) {
+            videoPlayer.stopPlayback();
+        }
+        // Дополнительная остановка речи при закрытии
+        if (isSpeaking) {
+            stopSpeech();
+        }
+        isSpeaking = false;
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (videoPlayer != null) {
+            videoPlayer.pause();
+        }
+        // Останавливаем речь при уходе с экрана
+        if (isSpeaking) {
+            stopSpeech();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // VideoView готов к воспроизведению
     }
 
     private void fillIngredientsContainer() {
@@ -78,7 +275,8 @@ public class RecipeActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isIngredientSectionHeader(String line) {
+    private boolean isIngredientSectionHeader(String line) 
+    {
         if (line == null || line.isEmpty()) return false;
         int colon = line.indexOf(':');
         if (colon <= 0 || colon > 25) return false;
@@ -111,14 +309,17 @@ public class RecipeActivity extends AppCompatActivity {
     }
 
     private void loadRecipeImage(int imageViewId, String drawableName) {
-        if (drawableName == null || drawableName.isEmpty()) return;
-        int resId = getResources().getIdentifier(drawableName, "drawable", getPackageName());
-        if (resId != 0) {
-            ((ImageView) findViewById(imageViewId)).setImageResource(resId);
+        ImageView imageView = findViewById(imageViewId);
+        if (drawableName == null || drawableName.isEmpty()) {
+            imageView.setImageResource(R.drawable.placeholder_recipe);
+            return;
         }
+        int resId = getResources().getIdentifier(drawableName, "drawable", getPackageName());
+        imageView.setImageResource(resId != 0 ? resId : R.drawable.placeholder_recipe);
     }
 
-    private void showLanguageDialog() {
+    private void showLanguageDialog() 
+    {
         String[] items = {
                 getString(R.string.lang_russian),
                 getString(R.string.lang_english),
