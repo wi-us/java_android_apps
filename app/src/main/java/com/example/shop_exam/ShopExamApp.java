@@ -11,7 +11,7 @@ public class ShopExamApp extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // сброс проверки возарста при каждом запуске
+        // сброс проверки возраста при каждом запуске
         AgeGateStore.resetForNewLaunch(this);
     }
 }

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, Response
+from fastapi import APIRouter, HTTPException, Request, Depends, Response, Query
 from peewee import DoesNotExist
 from playhouse.shortcuts import model_to_dict
-from typing import List
+from typing import List, Optional
 import schemas
 import database as db
 import auth
@@ -548,11 +548,71 @@ def build_variant_dict(variant: db.GameVariant, base_url: str | None = None) -> 
 
 # --- Кастомные эндпоинты, использующие новую логику ---
 
+def _variant_matches_search(variant: db.GameVariant, q_lower: str) -> bool:
+    """Поиск только по названию товара (название игры) без учёта регистра."""
+    title = (variant.game.title or "") if variant.game else ""
+    return title.lower().find(q_lower) >= 0
+
+
+def _variant_matches_filters(
+    variant: db.GameVariant,
+    min_players: Optional[int],
+    max_players: Optional[int],
+    min_age: Optional[int],
+    price_min: Optional[float],
+    price_max: Optional[float],
+    in_stock: Optional[bool],
+) -> bool:
+    """Проверка варианта по фильтрам: игроки, возраст, цена, наличие."""
+    game = variant.game
+    # Фильтр по игрокам: строгое соответствие диапазону [min_players, max_players]
+    if min_players is not None and game and game.min_players is not None:
+        # Минимум игроков в игре должен быть >= указанного минимума
+        if game.min_players < min_players:
+            return False
+    if max_players is not None and game and game.max_players is not None:
+        # Максимум игроков в игре должен быть <= указанного максимума
+        if game.max_players > max_players:
+            return False
+    if min_age is not None and game and getattr(game, "age_rating_id", None):
+        ar = game.age_rating
+        if ar is not None and getattr(ar, "min_age", None) is not None and ar.min_age < min_age:
+            return False
+    actual_price = float(variant.discount_price if variant.discount_price is not None else variant.price)
+    if price_min is not None and actual_price < price_min:
+        return False
+    if price_max is not None and actual_price > price_max:
+        return False
+    if in_stock:
+        if not variant.status_id:
+            return False
+        st = variant.status
+        if st is None or (st.name or "").strip().lower() != "в наличии":
+            return False
+    return True
+
+
 @router.get("/game_variants", response_model=List[schemas.GameVariantSchema], tags=["GameVariant"])
-def get_all_game_variants_custom(request: Request):
-    """Отдает список всех вариантов, вручную подгружая связанные данные."""
-    variants = list(db.GameVariant.select())
-    # Собираем данные для каждого варианта через нашу новую функцию
+def get_all_game_variants_custom(
+    request: Request,
+    q: Optional[str] = Query(None),
+    min_players: Optional[int] = Query(None),
+    max_players: Optional[int] = Query(None),
+    min_age: Optional[int] = Query(None),
+    price_min: Optional[float] = Query(None),
+    price_max: Optional[float] = Query(None),
+    in_stock: Optional[bool] = Query(None),
+):
+    """Список вариантов: поиск по названию + фильтры по игрокам, возрасту, цене, наличию."""
+    variants = list(db.GameVariant.select().join(db.Game))
+    if q and q.strip():
+        q_clean = q.strip().lower()
+        variants = [v for v in variants if _variant_matches_search(v, q_clean)]
+    if any(x is not None for x in (min_players, max_players, min_age, price_min, price_max, in_stock)):
+        variants = [
+            v for v in variants
+            if _variant_matches_filters(v, min_players, max_players, min_age, price_min, price_max, in_stock)
+        ]
     base_url = str(request.base_url).rstrip("/")
     response_data = [build_variant_dict(v, base_url=base_url) for v in variants]
     return response_data

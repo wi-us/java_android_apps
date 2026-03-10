@@ -19,3 +19,4 @@ uvicorn main:app --reload
 
 Сервер будет доступен по адресу http://127.0.0.1:8000
 
+## Notion Telegram BotОтдельный сервис для интеграции Notion с Telegram — см. папку `Notion/`.

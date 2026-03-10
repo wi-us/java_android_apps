@@ -2,4 +2,15 @@
     <string name="app_name">Shop_Exam</string>
     <string name="players">Игроки</string>
     <string name="dgis_map_key">58d9a17b-d096-48ef-af0e-38ea9e5b40ba</string>
+    <string name="search_hint">Поиск игр…</string>
+    <string name="search_button">Найти</string>
+    <string name="search_empty">Ничего не найдено</string>
+    <string name="filters_button">Фильтры</string>
+    <string name="filter_players">Кол-во игроков</string>
+    <string name="filter_age">Возраст</string>
+    <string name="filter_price">Цена, ₽</string>
+    <string name="filter_in_stock">Только в наличии</string>
+    <string name="filter_apply">Применить</string>
+    <string name="filter_reset">Сбросить</string>
+    <string name="filter_any">Любой</string>
 </resources>

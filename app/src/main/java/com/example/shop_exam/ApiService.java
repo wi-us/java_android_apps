@@ -29,9 +29,17 @@ public interface ApiService {
     @POST("api/users")
     Call<RegisterResponse> registerUser(@Body RegisterRequest request);
 
-    // Список товаров
+    // Список товаров (поиск + фильтры)
     @GET("api/game_variants")
-    Call<List<GameVariantForList>> getGameVariants();
+    Call<List<GameVariantForList>> getGameVariants(
+            @Query("q") String searchQuery,
+            @Query("min_players") Integer minPlayers,
+            @Query("max_players") Integer maxPlayers,
+            @Query("min_age") Integer minAge,
+            @Query("price_min") Double priceMin,
+            @Query("price_max") Double priceMax,
+            @Query("in_stock") Boolean inStock
+    );
 
     // Детали товара
     @GET("api/game_variants/{id}")

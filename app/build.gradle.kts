@@ -2,6 +2,13 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+buildscript {
+    dependencies {
+        // Стабильная версия Android Gradle Plugin
+        classpath("com.android.tools.build:gradle:7.4.2")
+    }
+}
+
 android {
     namespace = "com.example.shop_exam"
     compileSdk = 35
@@ -32,7 +39,8 @@ android {
 }
 
 dependencies {
-
+    // Google Sign-In для простой и быстрой авторизации
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)

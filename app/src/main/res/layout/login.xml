@@ -72,6 +72,15 @@
                 android:hint="Пароль" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Кнопка для авторизации через Google -->
+        <Button
+            android:id="@+id/button_GoogleLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Войти через Google"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#DB4437"
+            android:padding="12dp"/>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
