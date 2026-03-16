@@ -9,7 +9,7 @@
 
     <application
         android:name=".ShopExamApp"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -34,7 +34,7 @@
             android:name=".LoginActivity"
             android:exported="false" />
 
-        <!-- 3. RegisterActivity - обычный экран (ИСПРАВЛЕНО) -->
+        <!-- 3. RegisterActivity -->
         <activity
             android:name=".RegisterActivity"
             android:exported="false" />
@@ -70,6 +70,10 @@
 
         <activity
             android:name=".EditProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".VerifyEmailActivity"
             android:exported="false" />
 
     </application>

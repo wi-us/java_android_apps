@@ -213,11 +213,11 @@ public class CheckoutActivity extends AppCompatActivity {
 
     // Загрузка суммы корзины
     private void loadCartTotal() {
-        apiService.getCart().enqueue(new Callback<CartResponse>() {
+        apiService.getCart().enqueue(new Callback<ServerCartResponse>() {
             @Override
-            public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
+            public void onResponse(Call<ServerCartResponse> call, Response<ServerCartResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    orderTotal = response.body().getTotal();
+                    orderTotal = response.body().total;
                     totalText.setText(String.format(Locale.getDefault(),
                             "Сумма к оплате  %.0f ₽", orderTotal));
                     submitButton.setEnabled(orderTotal > 0);
@@ -228,7 +228,7 @@ public class CheckoutActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<CartResponse> call, Throwable t) {
+            public void onFailure(Call<ServerCartResponse> call, Throwable t) {
                 submitButton.setEnabled(false);
                 checkLoadComplete();
             }

@@ -74,13 +74,86 @@
                     android:textAppearance="@style/TextAppearance.App.Headline"
                     tools:text="Название игры" />
 
-                <TextView
-                    android:id="@+id/game_description"
-                    android:layout_width="wrap_content"
+                <!-- Кнопки вкладок -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/tab_buttons_row"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:clipToPadding="false">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/tab_description"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="8dp"
+                            android:text="Описание"
+                            android:textSize="13sp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/tab_rules"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="8dp"
+                            android:text="Правила"
+                            android:textSize="13sp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/tab_components"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="8dp"
+                            android:text="Комплектация"
+                            android:textSize="13sp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/tab_specs"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="Характеристики"
+                            android:textSize="13sp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp" />
+
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <!-- Контент вкладки "Описание" / "Правила" / "Комплектация" (HTML) -->
+                <TextView
+                    android:id="@+id/tab_content_html"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingMultiplier="1.2"
+                    android:lineSpacingExtra="0dp"
                     android:textAppearance="@style/TextAppearance.App.Body"
-                    tools:text="Здесь будет очень длинное и подробное описание." />
+                    android:visibility="visible"
+                    tools:text="Текст вкладки" />
+
+                <!-- Контент вкладки "Характеристики" (таблица) -->
+                <LinearLayout
+                    android:id="@+id/tab_specs_table"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
 
             </LinearLayout>
 

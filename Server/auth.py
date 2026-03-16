@@ -23,9 +23,13 @@ COOKIE_NAME = "access_token"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login", auto_error=False)
 
 # --- Хелперы для паролей ---
+def get_password_hash(plain_password: str) -> str:
+    """Возвращает SHA-256 хэш пароля."""
+    return hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+
 def verify_password(plain_password, hashed_password):
     """Проверяет, соответствует ли пароль хэшу."""
-    return hashlib.sha256(plain_password.encode('utf-8')).hexdigest() == hashed_password
+    return get_password_hash(plain_password) == hashed_password
 
 # --- Создание и проверка токенов ---
 def create_access_token(data: dict):

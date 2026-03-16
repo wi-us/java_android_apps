@@ -1,5 +1,6 @@
 package com.example.shop_exam;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.View;
@@ -112,22 +113,39 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // Создаём запрос
         RegisterRequest request = new RegisterRequest(email, password, login);
 
-        // Отправляем на сервер
-        apiService.registerUser(request).enqueue(new Callback<RegisterResponse>() {
+        apiService.registerUser(request).enqueue(new Callback<RegisterVerifyResponse>() {
             @Override
-            public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
-                if (response.isSuccessful()) {
+            public void onResponse(Call<RegisterVerifyResponse> call, Response<RegisterVerifyResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    RegisterVerifyResponse body = response.body();
+                    Intent intent = new Intent(RegisterActivity.this, VerifyEmailActivity.class);
+                    intent.putExtra(VerifyEmailActivity.EXTRA_EMAIL, body.email);
+                    startActivity(intent);
                     finish();
                 } else {
-                    loginInput.setError("Логин уже занят");
+                    String errorDetail = "";
+                    try {
+                        if (response.errorBody() != null) {
+                            errorDetail = response.errorBody().string();
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (errorDetail.contains("email_taken")) {
+                        emailInput.setError("Email уже используется");
+                    } else if (errorDetail.contains("login_taken")) {
+                        loginInput.setError("Логин уже занят");
+                    } else {
+                        loginInput.setError("Ошибка регистрации. Попробуйте снова");
+                    }
                 }
             }
 
             @Override
-            public void onFailure(Call<RegisterResponse> call, Throwable t) {
+            public void onFailure(Call<RegisterVerifyResponse> call, Throwable t) {
+                loginInput.setError("Ошибка соединения");
             }
         });
     }

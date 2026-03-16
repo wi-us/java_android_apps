@@ -28,3 +28,7 @@ cisco_*.md
 **/__pycache__/
 **/*.pyc
 exam_server/chromedriver.exe
+
+# Секреты (сервер)
+Server/.env
+**/.env

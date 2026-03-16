@@ -8,6 +8,7 @@
     android:padding="20dp"
     tools:context=".LoginActivity">
 
+    <!-- Кнопки внизу: Регистрация и Войти -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_registration"
         style="@style/Widget.App.Button.MainButton"
@@ -30,6 +31,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/button_registration" />
 
+    <!-- Центральный блок с полями и кнопками -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -44,12 +46,15 @@
             android:id="@+id/textView2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
             android:text="Авторизация"
             android:textAppearance="@style/TextAppearance.App.Headline" />
 
+        <!-- Поле логина -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/login_input_layout"
-            style="@style/Widget.App.TextInputLayout.Login">
+            style="@style/Widget.App.TextInputLayout.Login"
+            android:layout_marginBottom="16dp">
 
             <com.google.android.material.textfield.TextInputEditText
                 style="@style/Widget.App.TextInputEditText.Base"
@@ -59,9 +64,11 @@
                 android:hint="Логин" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Поле пароля -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/password_input_layout"
-            style="@style/Widget.App.TextInputLayout.Login">
+            style="@style/Widget.App.TextInputLayout.Login"
+            android:layout_marginBottom="16dp">
 
             <com.google.android.material.textfield.TextInputEditText
                 style="@style/Widget.App.TextInputEditText.Base"
@@ -72,15 +79,67 @@
                 android:hint="Пароль" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Кнопка для авторизации через Google -->
-        <Button
-            android:id="@+id/button_GoogleLogin"
+        <!-- Разделитель "— или —" -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Войти через Google"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#DB4437"
-            android:padding="12dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#CCCCCC" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="или"
+                android:textColor="#999999"
+                android:textSize="14sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#CCCCCC" />
+        </LinearLayout>
+
+        <!-- Кнопка Google -->
+        <LinearLayout
+            android:id="@+id/button_GoogleLogin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="@drawable/bg_google_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:adjustViewBounds="true"
+                android:src="@drawable/google_assistant"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Войти через Google"
+                android:textColor="#444444"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

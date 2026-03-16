@@ -25,9 +25,21 @@ public interface ApiService {
             @Field("password") String password
     );
 
-    // Регистрация
-    @POST("api/users")
-    Call<RegisterResponse> registerUser(@Body RegisterRequest request);
+    // Авторизация через Google (создаёт пользователя если нет)
+    @POST("api/auth/google")
+    Call<LoginResponse> googleAuth(@Body GoogleAuthRequest request);
+
+    // Регистрация (с отправкой кода верификации на почту)
+    @POST("api/auth/register")
+    Call<RegisterVerifyResponse> registerUser(@Body RegisterRequest request);
+
+    // Подтверждение email кодом
+    @POST("api/auth/verify-email")
+    Call<LoginResponse> verifyEmail(@Body VerifyEmailRequest request);
+
+    // Повторная отправка кода верификации
+    @POST("api/auth/resend-code")
+    Call<Void> resendCode(@Body ResendCodeRequest request);
 
     // Список товаров (поиск + фильтры)
     @GET("api/game_variants")
@@ -38,16 +50,24 @@ public interface ApiService {
             @Query("min_age") Integer minAge,
             @Query("price_min") Double priceMin,
             @Query("price_max") Double priceMax,
-            @Query("in_stock") Boolean inStock
+            @Query("in_stock") Boolean inStock,
+            @Query("genres") String genres,
+            @Query("complexity") String complexity,
+            @Query("playtime_min") Integer playtimeMin,
+            @Query("playtime_max") Integer playtimeMax
     );
+
+    // Список жанров для фильтров
+    @GET("api/genres")
+    Call<List<GenreItem>> getGenres();
 
     // Детали товара
     @GET("api/game_variants/{id}")
     Call<GameDetail> getGameDetails(@Path("id") int id);
 
-    // Корзина
+    // Корзина (детали с товарами — только для авторизованных)
     @GET("api/cart")
-    Call<CartResponse> getCart();
+    Call<ServerCartResponse> getCart();
 
     // Добавление в корзину
     @POST("api/cart/items")

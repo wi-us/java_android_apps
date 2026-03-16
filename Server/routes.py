@@ -543,7 +543,21 @@ def build_variant_dict(variant: db.GameVariant, base_url: str | None = None) -> 
         }
         for img in variant_images
     ]
-    
+
+    # 5. Парсим dimensions_mm → box_width_mm, box_height_mm, box_depth_mm
+    dims = getattr(variant, "dimensions_mm", None) or ""
+    parts = [p.strip() for p in dims.replace("x", "x").split("x") if p.strip().isdigit()]
+    variant_data["box_width_mm"] = int(parts[0]) if len(parts) > 0 else None
+    variant_data["box_height_mm"] = int(parts[1]) if len(parts) > 1 else None
+    variant_data["box_depth_mm"] = int(parts[2]) if len(parts) > 2 else None
+
+    # 6. Жанры игры
+    try:
+        genre_links = db.GameGenre.select().where(db.GameGenre.game == variant.game)
+        variant_data["genres"] = [gl.genre.name for gl in genre_links]
+    except Exception:
+        variant_data["genres"] = []
+
     return variant_data
 
 # --- Кастомные эндпоинты, использующие новую логику ---
@@ -562,16 +576,18 @@ def _variant_matches_filters(
     price_min: Optional[float],
     price_max: Optional[float],
     in_stock: Optional[bool],
+    genres: Optional[List[str]],
+    complexity: Optional[str],
+    playtime_min: Optional[int],
+    playtime_max: Optional[int],
 ) -> bool:
-    """Проверка варианта по фильтрам: игроки, возраст, цена, наличие."""
+    """Проверка варианта по фильтрам: игроки, возраст, цена, наличие, жанры, сложность, длительность."""
     game = variant.game
     # Фильтр по игрокам: строгое соответствие диапазону [min_players, max_players]
     if min_players is not None and game and game.min_players is not None:
-        # Минимум игроков в игре должен быть >= указанного минимума
         if game.min_players < min_players:
             return False
     if max_players is not None and game and game.max_players is not None:
-        # Максимум игроков в игре должен быть <= указанного максимума
         if game.max_players > max_players:
             return False
     if min_age is not None and game and getattr(game, "age_rating_id", None):
@@ -589,7 +605,33 @@ def _variant_matches_filters(
         st = variant.status
         if st is None or (st.name or "").strip().lower() != "в наличии":
             return False
+    # Фильтр по жанрам: игра должна иметь хотя бы один из выбранных жанров
+    if genres:
+        genre_links = db.GameGenre.select().where(db.GameGenre.game == variant.game)
+        game_genres = {gl.genre.name for gl in genre_links}
+        if not game_genres.intersection(set(genres)):
+            return False
+    # Фильтр по сложности
+    if complexity:
+        v_complexity = (variant.complexity or "").strip()
+        if v_complexity.lower() != complexity.strip().lower():
+            return False
+    # Фильтр по длительности
+    if playtime_min is not None and game and game.playtime_avg is not None:
+        if game.playtime_avg < playtime_min:
+            return False
+    if playtime_max is not None and game and game.playtime_avg is not None:
+        if game.playtime_avg > playtime_max:
+            return False
     return True
+
+
+@router.get("/genres", response_model=List[schemas.GenreSchema], tags=["Genre"])
+def get_genres_for_filter():
+    """Возвращает список жанров, у которых есть хотя бы одна игра (для фильтров)."""
+    used_genre_ids = {gg.genre_id for gg in db.GameGenre.select()}
+    genres = list(db.Genre.select().where(db.Genre.id.in_(used_genre_ids)).order_by(db.Genre.name))
+    return genres
 
 
 @router.get("/game_variants", response_model=List[schemas.GameVariantSchema], tags=["GameVariant"])
@@ -602,16 +644,25 @@ def get_all_game_variants_custom(
     price_min: Optional[float] = Query(None),
     price_max: Optional[float] = Query(None),
     in_stock: Optional[bool] = Query(None),
+    genres: Optional[str] = Query(None),       # жанры через запятую: "Стратегия,Евро"
+    complexity: Optional[str] = Query(None),   # "Лёгкая" / "Средняя" / "Сложная" / "Хардкор"
+    playtime_min: Optional[int] = Query(None),
+    playtime_max: Optional[int] = Query(None),
 ):
-    """Список вариантов: поиск по названию + фильтры по игрокам, возрасту, цене, наличию."""
+    """Список вариантов: поиск по названию + фильтры по игрокам, возрасту, цене, наличию, жанрам, сложности, длительности."""
     variants = list(db.GameVariant.select().join(db.Game))
     if q and q.strip():
         q_clean = q.strip().lower()
         variants = [v for v in variants if _variant_matches_search(v, q_clean)]
-    if any(x is not None for x in (min_players, max_players, min_age, price_min, price_max, in_stock)):
+
+    genres_list: Optional[List[str]] = None
+    if genres and genres.strip():
+        genres_list = [g.strip() for g in genres.split(",") if g.strip()]
+
+    if any(x is not None for x in (min_players, max_players, min_age, price_min, price_max, in_stock, genres_list, complexity, playtime_min, playtime_max)):
         variants = [
             v for v in variants
-            if _variant_matches_filters(v, min_players, max_players, min_age, price_min, price_max, in_stock)
+            if _variant_matches_filters(v, min_players, max_players, min_age, price_min, price_max, in_stock, genres_list, complexity, playtime_min, playtime_max)
         ]
     base_url = str(request.base_url).rstrip("/")
     response_data = [build_variant_dict(v, base_url=base_url) for v in variants]

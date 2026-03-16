@@ -2,11 +2,9 @@ package com.example.shop_exam;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputLayout;
@@ -21,19 +19,17 @@ import retrofit2.Response;
  */
 public class LoginActivity extends AppCompatActivity {
 
-    private static final String TAG = "LoginActivity";
-    
     private TextInputLayout loginInput;
     private TextInputLayout passwordInput;
     private Button loginButton;
     private Button registerButton;
-    private Button loginButton_GOOGLE;
+    private View loginButton_GOOGLE;
     private ApiService apiService;
     private boolean returnToCart = false;
     
     // Google авторизация
     private GoogleAuthHelper googleAuthHelper;
-    private ActivityResultLauncher<Intent> googleLauncher;
+    private androidx.activity.result.ActivityResultLauncher<Intent> googleLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,59 +47,25 @@ public class LoginActivity extends AppCompatActivity {
         registerButton = findViewById(R.id.button_registration);
         loginButton_GOOGLE = findViewById(R.id.button_GoogleLogin);
 
-        // Инициализация Google launcher'а (ПЕРЕД инициализацией GoogleAuthHelper!)
-        Log.d(TAG, "🔧 Инициализация Google Launcher...");
-        googleLauncher = GoogleAuthHelper.createLauncher(this, new GoogleAuthHelper.GoogleAuthCallback() {
+        // Инициализация Google авторизации (Firebase Auth + Google Sign-In)
+        googleAuthHelper = new GoogleAuthHelper(this, new GoogleAuthHelper.GoogleAuthCallback() {
             @Override
             public void onSuccess(String idToken, String email, String displayName) {
-                Log.d(TAG, "✅ [CALLBACK] Google авторизация успешна!");
-                Log.d(TAG, "   Email: " + email);
-                Log.d(TAG, "   Display Name: " + displayName);
-                Log.d(TAG, "   ID Token: " + (idToken != null ? "присутствует (длина: " + idToken.length() + ")" : "NULL"));
                 onGoogleAuthSuccess(idToken, email, displayName);
             }
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "❌ [CALLBACK] Ошибка Google авторизации: " + error);
-                passwordInput.setError("Ошибка Google: " + error);
+                passwordInput.setError(error);
             }
 
             @Override
             public void onCancel() {
-                Log.d(TAG, "🚫 [CALLBACK] Google авторизация отменена пользователем");
                 passwordInput.setError("Авторизация отменена");
             }
         });
-        Log.d(TAG, "✅ Google Launcher создан");
-        
-        // Инициализация Google авторизации
-        String clientId = "782186171474-2pb8t3j9k0t8dp3i90e70qviie2lutlp.apps.googleusercontent.com";
-        Log.d(TAG, "🔧 Инициализация GoogleAuthHelper...");
-        Log.d(TAG, "   Client ID: " + clientId);
-        Log.d(TAG, "   Package Name: " + getPackageName());
-        
-        googleAuthHelper = new GoogleAuthHelper(
-            this,
-            clientId,
-            new GoogleAuthHelper.GoogleAuthCallback() {
-                @Override
-                public void onSuccess(String idToken, String email, String displayName) {
-                    // Не используется, обработка в launcher
-                }
 
-                @Override
-                public void onError(String error) {
-                    // Не используется, обработка в launcher
-                }
-
-                @Override
-                public void onCancel() {
-                    // Не используется, обработка в launcher
-                }
-            }
-        );
-        Log.d(TAG, "✅ GoogleAuthHelper инициализирован");
+        googleLauncher = googleAuthHelper.createLauncher(this);
 
         // Кнопка входа
         loginButton.setOnClickListener(new View.OnClickListener() {
@@ -123,13 +85,7 @@ public class LoginActivity extends AppCompatActivity {
         });
         
         // Google авторизация кнопка
-        loginButton_GOOGLE.setOnClickListener(v -> {
-            Log.d(TAG, "");
-            Log.d(TAG, "========================================");
-            Log.d(TAG, "🔵 НАЖАТА КНОПКА GOOGLE АВТОРИЗАЦИИ");
-            Log.d(TAG, "========================================");
-            startGoogleAuth();
-        });
+        loginButton_GOOGLE.setOnClickListener(v -> startGoogleAuth());
     }
 
     // Авторизация пользователя
@@ -172,19 +128,19 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        final String finalUsername = username;
+        final String finalPassword = password;
+
         // Запрос на сервер
-        apiService.loginUser(username, password).enqueue(new Callback<LoginResponse>() {
+        apiService.loginUser(finalUsername, finalPassword).enqueue(new Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    // Сохранение токена
                     String token = response.body().access_token;
                     TokenStore.saveToken(LoginActivity.this, token);
 
-                    // Синхронизация локальной корзины с сервером
                     syncLocalCartToServer();
 
-                    // Переход на нужный экран
                     if (returnToCart) {
                         Intent intent = new Intent(LoginActivity.this, CartActivity.class);
                         startActivity(intent);
@@ -205,7 +161,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    // Синхронизация локальной корзины с сервером после авторизации
+    // Синхронизация локальной корзины с сервером после авторизации, затем очистка
     private void syncLocalCartToServer() {
         Map<Integer, Integer> localItems = LocalCartStore.getItems(this);
 
@@ -213,76 +169,53 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Отправка каждого товара на сервер
         for (Map.Entry<Integer, Integer> entry : localItems.entrySet()) {
-            int variantId = entry.getKey();
-            int quantity = entry.getValue();
-
-            CartAddRequest request = new CartAddRequest(variantId, quantity);
+            CartAddRequest request = new CartAddRequest(entry.getKey(), entry.getValue());
             apiService.addToCart(request).enqueue(new Callback<CartResponse>() {
                 @Override
-                public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {
-                }
+                public void onResponse(Call<CartResponse> call, Response<CartResponse> response) {}
 
                 @Override
-                public void onFailure(Call<CartResponse> call, Throwable t) {
-                }
+                public void onFailure(Call<CartResponse> call, Throwable t) {}
             });
         }
+
+        // Очищаем локальную корзину — теперь источник правды сервер
+        LocalCartStore.clear(this);
     }
 
-    /**
-     * Запускает Google авторизацию
-     */
     private void startGoogleAuth() {
-        try {
-            Log.d(TAG, "▶️ Вызываем googleAuthHelper.startAuth()...");
-            Log.d(TAG, "   GoogleAuthHelper: " + (googleAuthHelper != null ? "OK" : "NULL"));
-            Log.d(TAG, "   GoogleLauncher: " + (googleLauncher != null ? "OK" : "NULL"));
-            
-            googleAuthHelper.startAuth(googleLauncher);
-            
-            Log.d(TAG, "✅ startAuth() вызван успешно, ожидаем результат...");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ EXCEPTION при запуске Google авторизации!");
-            Log.e(TAG, "   Тип: " + e.getClass().getName());
-            Log.e(TAG, "   Сообщение: " + e.getMessage());
-            e.printStackTrace();
-            passwordInput.setError("Ошибка Google авторизации");
-        }
+        googleAuthHelper.startAuth(googleLauncher);
     }
 
-    /**
-     * Обработка успешной Google авторизации
-     */
     private void onGoogleAuthSuccess(String idToken, String email, String displayName) {
-        Log.d(TAG, "");
-        Log.d(TAG, "========================================");
-        Log.d(TAG, "🎉 GOOGLE АВТОРИЗАЦИЯ УСПЕШНА!");
-        Log.d(TAG, "========================================");
-        Log.d(TAG, "📧 Email: " + email);
-        Log.d(TAG, "👤 Display Name: " + displayName);
-        Log.d(TAG, "🔑 ID Token: " + (idToken != null ? "присутствует (длина: " + idToken.length() + ")" : "NULL"));
-        
-        Log.d(TAG, "💾 Сохраняем токен...");
-        TokenStore.saveToken(LoginActivity.this, idToken);
-        Log.d(TAG, "✅ Токен сохранён");
-        
-        Log.d(TAG, "🛒 Синхронизируем корзину...");
-        syncLocalCartToServer();
-        
-        // Переходим на нужный экран
-        Intent intent;
-        if (returnToCart) {
-            Log.d(TAG, "📱 Переход в CartActivity");
-            intent = new Intent(LoginActivity.this, CartActivity.class);
-        } else {
-            Log.d(TAG, "📱 Переход в MainActivity");
-            intent = new Intent(LoginActivity.this, MainActivity.class);
-        }
-        startActivity(intent);
-        Log.d(TAG, "🏁 Завершаем LoginActivity");
-        finish();
+        GoogleAuthRequest request = new GoogleAuthRequest(email, displayName);
+        apiService.googleAuth(request).enqueue(new Callback<LoginResponse>() {
+            @Override
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String token = response.body().access_token;
+                    TokenStore.saveToken(LoginActivity.this, token);
+                    syncLocalCartToServer();
+
+                    Intent intent;
+                    if (returnToCart) {
+                        intent = new Intent(LoginActivity.this, CartActivity.class);
+                    } else {
+                        intent = new Intent(LoginActivity.this, MainActivity.class);
+                    }
+                    startActivity(intent);
+                    finish();
+                } else {
+                    loginInput.setError("Ошибка входа через Google (код " + response.code() + ")");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                loginInput.setError("Ошибка соединения с сервером");
+            }
+        });
     }
     
 }

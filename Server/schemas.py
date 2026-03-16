@@ -52,6 +52,7 @@ class GameBase(BaseModel):
     slug: str
     min_players: Optional[int] = None
     max_players: Optional[int] = None
+    playtime_avg: Optional[int] = None
     age_rating: Optional[AgeRatingBase] = None
     class Config: from_attributes = True
 
@@ -163,6 +164,7 @@ class GameSchema(GameBase):
     min_players: int
     max_players: int
     playtime_avg: Optional[int] = None
+    genres: List[str] = []
     variants: List['GameVariantSchema'] = [] # Добавлено для вложенности
 
 class GameCreate(BaseModel):
@@ -187,11 +189,20 @@ class GameVariantSchema(GameVariantBase):
     status: Optional[StatusBase] = None
     edition_name: Optional[str] = None
     description: Optional[str] = None
+    description_html: Optional[str] = None
+    rules_html: Optional[str] = None
+    components_html: Optional[str] = None
+    complexity: Optional[str] = None
     image_link: Optional[str] = None 
     images: List['VariantImageSchema'] = [] # Список всех изображений для слайдера
     is_expansion: bool
     weight_grams: Optional[int] = None
     dimensions_mm: Optional[str] = None
+    # Распарсенные размеры коробки
+    box_width_mm: Optional[int] = None
+    box_height_mm: Optional[int] = None
+    box_depth_mm: Optional[int] = None
+    genres: List[str] = []  # Жанры игры
     created_at: datetime
     class Config: from_attributes = True
 class GameVariantCreate(BaseModel):

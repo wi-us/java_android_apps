@@ -79,20 +79,17 @@ public class CartActivity extends AppCompatActivity {
         });
 
         // Кнопка оформления заказа (с проверкой авторизации)
-        checkoutButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (checkoutButton.isEnabled()) {
-                    if (isUserLoggedIn()) {
-                        syncCartAndCheckout();
-                    } else {
-                        // Переход на авторизацию, если вход не выполнен
-                        Intent intent = new Intent(CartActivity.this, LoginActivity.class);
-                        intent.putExtra("return_to_cart", true);
-                        startActivity(intent);
-                    }
-                }
+        checkoutButton.setOnClickListener(v -> {
+            // Сначала проверяем авторизацию — незалогиненный пользователь
+            // всегда попадает на экран входа, независимо от состояния кнопки
+            if (!isUserLoggedIn()) {
+                Intent intent = new Intent(CartActivity.this, LoginActivity.class);
+                intent.putExtra("return_to_cart", true);
+                startActivity(intent);
+                return;
             }
+            // Пользователь авторизован — запускаем оформление
+            syncCartAndCheckout();
         });
     }
 
@@ -269,18 +266,66 @@ public class CartActivity extends AppCompatActivity {
         }
     }
 
-    // Загрузка корзины из локального хранилища
+    // Загрузка корзины: с сервера если авторизован, локально если нет
     private void loadCart() {
-        if (isLoading) {
-            return;
-        }
+        if (isLoading) return;
         isLoading = true;
-        
         swipeRefresh.setRefreshing(true);
         cartItems.clear();
 
+        if (isUserLoggedIn()) {
+            loadCartFromServer();
+        } else {
+            loadCartFromLocal();
+        }
+    }
+
+    private boolean isLoading = false;
+
+    // Загрузка корзины с сервера (авторизованный пользователь)
+    private void loadCartFromServer() {
+        apiService.getCart().enqueue(new Callback<ServerCartResponse>() {
+            @Override
+            public void onResponse(Call<ServerCartResponse> call, Response<ServerCartResponse> response) {
+                swipeRefresh.setRefreshing(false);
+                isLoading = false;
+                if (response.isSuccessful() && response.body() != null) {
+                    ServerCartResponse cart = response.body();
+                    if (cart.items != null) {
+                        for (ServerCartResponse.Item item : cart.items) {
+                            if (item.gameVariant != null) {
+                                String title = item.gameVariant.getGame() != null
+                                        ? item.gameVariant.getGame().getTitle() : "";
+                                cartItems.add(new CartItem(
+                                        item.gameVariant.getId(),
+                                        title,
+                                        item.gameVariant.getImageLink(),
+                                        item.gameVariant.getActualPrice(),
+                                        item.quantity
+                                ));
+                            }
+                        }
+                    }
+                    adapter.notifyDataSetChanged();
+                    updateCheckoutButton(cart.total);
+                } else {
+                    updateCheckoutButton(0);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ServerCartResponse> call, Throwable t) {
+                swipeRefresh.setRefreshing(false);
+                isLoading = false;
+                updateCheckoutButton(0);
+            }
+        });
+    }
+
+    // Загрузка корзины из локального хранилища (неавторизованный)
+    private void loadCartFromLocal() {
         Map<Integer, Integer> localItems = LocalCartStore.getItems(this);
-        
+
         if (localItems.isEmpty()) {
             swipeRefresh.setRefreshing(false);
             adapter.notifyDataSetChanged();
@@ -289,75 +334,63 @@ public class CartActivity extends AppCompatActivity {
             return;
         }
 
-        // Загрузка информации о товарах с сервера
         loadingCount = localItems.size();
         loadedCount = 0;
-        
+
         for (Map.Entry<Integer, Integer> entry : localItems.entrySet()) {
-            int variantId = entry.getKey();
-            int quantity = entry.getValue();
-            loadVariantInfo(variantId, quantity);
+            loadVariantInfo(entry.getKey(), entry.getValue());
         }
     }
 
     private int loadingCount = 0;
     private int loadedCount = 0;
-    private boolean isLoading = false;
 
-    // Загрузка информации о товаре
+    // Загрузка информации об одном товаре (для локальной корзины)
     private void loadVariantInfo(int variantId, int quantity) {
         apiService.getGameDetails(variantId).enqueue(new Callback<GameDetail>() {
             @Override
             public void onResponse(Call<GameDetail> call, Response<GameDetail> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     GameDetail detail = response.body();
-                    String title = "";
-                    if (detail.getGame() != null) {
-                        title = detail.getGame().getTitle();
-                    }
-                    String image = detail.getImageLink();
-                    double price = detail.getActualPrice();
-                    
-                    cartItems.add(new CartItem(variantId, title, image, price, quantity));
+                    String title = detail.getGame() != null ? detail.getGame().getTitle() : "";
+                    cartItems.add(new CartItem(variantId, title, detail.getImageLink(),
+                            detail.getActualPrice(), quantity));
                 }
-                checkLoadComplete();
+                checkLocalLoadComplete();
             }
 
             @Override
             public void onFailure(Call<GameDetail> call, Throwable t) {
-                // Если не удалось загрузить - удаляем из локальной корзины
                 LocalCartStore.removeItem(CartActivity.this, variantId);
-                checkLoadComplete();
+                checkLocalLoadComplete();
             }
         });
     }
 
-    // Проверка завершения загрузки всех товаров
-    private void checkLoadComplete() {
+    private void checkLocalLoadComplete() {
         loadedCount++;
         if (loadedCount >= loadingCount) {
             swipeRefresh.setRefreshing(false);
             isLoading = false;
             adapter.notifyDataSetChanged();
-            
-            // Пересчёт итоговой суммы
             double total = 0;
-            for (CartItem item : cartItems) {
-                total += item.getPrice() * item.getQuantity();
-            }
+            for (CartItem item : cartItems) total += item.getPrice() * item.getQuantity();
             updateCheckoutButton(total);
         }
     }
 
     // Обновление кнопки оформления заказа
     private void updateCheckoutButton(double total) {
+        boolean loggedIn = isUserLoggedIn();
         if (total > 0) {
             checkoutButton.setEnabled(true);
             checkoutButton.setText(String.format(Locale.getDefault(), "Оплатить %.0f ₽", total));
             emptyCartText.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
         } else {
-            checkoutButton.setEnabled(false);
+            // Для незалогиненного пользователя кнопка остаётся активной (кликабельной),
+            // чтобы клик мог перенаправить на экран авторизации.
+            checkoutButton.setEnabled(!loggedIn);
             checkoutButton.setText("Оплатить");
             emptyCartText.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
@@ -372,19 +405,24 @@ public class CartActivity extends AppCompatActivity {
         int variantId = item.getGameVariantId();
 
         if (newQuantity <= 0) {
-            // Удаление товара
-            LocalCartStore.removeItem(this, variantId);
             cartItems.remove(position);
             adapter.notifyItemRemoved(position);
         } else {
-            // Обновление количества
-            LocalCartStore.setQuantity(this, variantId, newQuantity);
             item.setQuantity(newQuantity);
             adapter.notifyItemChanged(position);
         }
 
-        // Синхронизация с сервером если авторизован
-        syncQuantityToServer(variantId, newQuantity);
+        if (isUserLoggedIn()) {
+            // Авторизован: обновляем только на сервере
+            syncQuantityToServer(variantId, newQuantity);
+        } else {
+            // Не авторизован: обновляем только локально
+            if (newQuantity <= 0) {
+                LocalCartStore.removeItem(this, variantId);
+            } else {
+                LocalCartStore.setQuantity(this, variantId, newQuantity);
+            }
+        }
 
         recalculateTotal();
     }
@@ -394,16 +432,14 @@ public class CartActivity extends AppCompatActivity {
         if (position < 0 || position >= cartItems.size()) return;
 
         int variantId = cartItems.get(position).getGameVariantId();
-
-        // Удаление из локального хранилища
-        LocalCartStore.removeItem(this, variantId);
-
-        // Удаление из списка
         cartItems.remove(position);
         adapter.notifyItemRemoved(position);
 
-        // Синхронизация с сервером если авторизован (quantity=0 удаляет товар)
-        syncQuantityToServer(variantId, 0);
+        if (isUserLoggedIn()) {
+            syncQuantityToServer(variantId, 0);
+        } else {
+            LocalCartStore.removeItem(this, variantId);
+        }
 
         recalculateTotal();
     }

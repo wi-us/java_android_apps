@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Shop_Exam</string>
     <string name="players">Игроки</string>
-    <string name="dgis_map_key">58d9a17b-d096-48ef-af0e-38ea9e5b40ba</string>
+    <string name="dgis_map_key">63a57a89-1ad0-4271-bbdc-2be3f23979ab</string>
     <string name="search_hint">Поиск игр…</string>
     <string name="search_button">Найти</string>
     <string name="search_empty">Ничего не найдено</string>

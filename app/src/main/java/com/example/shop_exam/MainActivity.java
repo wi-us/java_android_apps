@@ -30,13 +30,17 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -67,6 +71,13 @@ public class MainActivity extends AppCompatActivity {
     private Double filterPriceMin;
     private Double filterPriceMax;
     private Boolean filterInStock;
+    private Set<String> filterGenres = new HashSet<>();
+    private String filterComplexity = null;
+    private Integer filterPlaytimeMin;
+    private Integer filterPlaytimeMax;
+
+    // Кэш жанров с сервера
+    private List<GenreItem> cachedGenres = new ArrayList<>();
 
     private static final long SEARCH_DELAY_MS = 1000;
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
@@ -202,6 +213,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         apiService = ApiClient.getClient(this).create(ApiService.class);
+        loadGenres();
         loadProducts();
 
         // Обновление свайпом вниз
@@ -272,27 +284,85 @@ public class MainActivity extends AppCompatActivity {
         return s.isEmpty() ? null : s;
     }
 
+    private void loadGenres() {
+        apiService.getGenres().enqueue(new Callback<List<GenreItem>>() {
+            @Override
+            public void onResponse(Call<List<GenreItem>> call, Response<List<GenreItem>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    cachedGenres = response.body();
+                }
+            }
+            @Override
+            public void onFailure(Call<List<GenreItem>> call, Throwable t) { /* ignore */ }
+        });
+    }
+
     private void showFilterDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_filters, null);
-        EditText minPlayersView = view.findViewById(R.id.filter_min_players);
-        EditText maxPlayersView = view.findViewById(R.id.filter_max_players);
-        Spinner ageSpinner = view.findViewById(R.id.filter_age_spinner);
-        EditText priceMinView = view.findViewById(R.id.filter_price_min);
-        EditText priceMaxView = view.findViewById(R.id.filter_price_max);
-        CheckBox inStockView = view.findViewById(R.id.filter_in_stock);
-        Button resetBtn = view.findViewById(R.id.filter_reset_btn);
-        Button applyBtn = view.findViewById(R.id.filter_apply_btn);
+        EditText minPlayersView    = view.findViewById(R.id.filter_min_players);
+        EditText maxPlayersView    = view.findViewById(R.id.filter_max_players);
+        Spinner  ageSpinner        = view.findViewById(R.id.filter_age_spinner);
+        EditText playtimeMinView   = view.findViewById(R.id.filter_playtime_min);
+        EditText playtimeMaxView   = view.findViewById(R.id.filter_playtime_max);
+        Spinner  complexitySpinner = view.findViewById(R.id.filter_complexity_spinner);
+        ChipGroup genreChipGroup   = view.findViewById(R.id.filter_genre_chip_group);
+        EditText priceMinView      = view.findViewById(R.id.filter_price_min);
+        EditText priceMaxView      = view.findViewById(R.id.filter_price_max);
+        CheckBox inStockView       = view.findViewById(R.id.filter_in_stock);
+        Button   resetBtn          = view.findViewById(R.id.filter_reset_btn);
+        Button   applyBtn          = view.findViewById(R.id.filter_apply_btn);
 
+        // Возраст
         String[] ageOptions = { getString(R.string.filter_any), "6+", "12+", "18+" };
         ageSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ageOptions));
         if (filterMinAge != null) {
             int pos = filterMinAge == 6 ? 1 : filterMinAge == 12 ? 2 : filterMinAge == 18 ? 3 : 0;
             ageSpinner.setSelection(pos);
         }
-        if (filterMinPlayers != null) minPlayersView.setText(String.valueOf(filterMinPlayers));
-        if (filterMaxPlayers != null) maxPlayersView.setText(String.valueOf(filterMaxPlayers));
-        if (filterPriceMin != null) priceMinView.setText(String.valueOf(filterPriceMin.intValue()));
-        if (filterPriceMax != null) priceMaxView.setText(String.valueOf(filterPriceMax.intValue()));
+
+        // Сложность
+        String[] complexityOptions = { getString(R.string.filter_any), "Лёгкая", "Средняя", "Сложная", "Хардкор" };
+        complexitySpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, complexityOptions));
+        if (filterComplexity != null) {
+            for (int i = 0; i < complexityOptions.length; i++) {
+                if (complexityOptions[i].equals(filterComplexity)) {
+                    complexitySpinner.setSelection(i);
+                    break;
+                }
+            }
+        }
+
+        // Жанры — добавляем чипы динамически
+        genreChipGroup.removeAllViews();
+        for (GenreItem genre : cachedGenres) {
+            Chip chip = new Chip(this);
+            chip.setText(genre.getName());
+            chip.setCheckable(true);
+            chip.setChecked(filterGenres.contains(genre.getName()));
+            chip.setChipBackgroundColorResource(android.R.color.transparent);
+            chip.setChipStrokeColorResource(R.color.color_disabled);
+            chip.setChipStrokeWidth(2f);
+            chip.setCheckedIconVisible(false);
+            chip.setMinHeight((int) (48 * getResources().getDisplayMetrics().density));
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                chip.setChipStrokeColorResource(isChecked ? R.color.color_secondary : R.color.color_disabled);
+                chip.setTextColor(getResources().getColor(isChecked ? R.color.color_secondary : R.color.color_text, getTheme()));
+            });
+            if (filterGenres.contains(genre.getName())) {
+                chip.setChipStrokeColorResource(R.color.color_secondary);
+                chip.setTextColor(getResources().getColor(R.color.color_secondary, getTheme()));
+            }
+            genreChipGroup.addView(chip);
+        }
+
+        // Остальные поля
+        if (filterMinPlayers != null)  minPlayersView.setText(String.valueOf(filterMinPlayers));
+        if (filterMaxPlayers != null)  maxPlayersView.setText(String.valueOf(filterMaxPlayers));
+        if (filterPlaytimeMin != null) playtimeMinView.setText(String.valueOf(filterPlaytimeMin));
+        if (filterPlaytimeMax != null) playtimeMaxView.setText(String.valueOf(filterPlaytimeMax));
+        if (filterPriceMin != null)    priceMinView.setText(String.valueOf(filterPriceMin.intValue()));
+        if (filterPriceMax != null)    priceMaxView.setText(String.valueOf(filterPriceMax.intValue()));
         inStockView.setChecked(Boolean.TRUE.equals(filterInStock));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -301,18 +371,13 @@ public class MainActivity extends AppCompatActivity {
                 .create();
 
         resetBtn.setOnClickListener(v2 -> {
-            filterMinPlayers = null;
-            filterMaxPlayers = null;
+            filterMinPlayers = null; filterMaxPlayers = null;
             filterMinAge = null;
-            filterPriceMin = null;
-            filterPriceMax = null;
+            filterPlaytimeMin = null; filterPlaytimeMax = null;
+            filterComplexity = null;
+            filterGenres.clear();
+            filterPriceMin = null; filterPriceMax = null;
             filterInStock = null;
-            minPlayersView.setText("");
-            maxPlayersView.setText("");
-            ageSpinner.setSelection(0);
-            priceMinView.setText("");
-            priceMaxView.setText("");
-            inStockView.setChecked(false);
             loadProducts();
             dialog.dismiss();
         });
@@ -322,6 +387,18 @@ public class MainActivity extends AppCompatActivity {
             filterMaxPlayers = parsePositiveInt(maxPlayersView.getText());
             int agePos = ageSpinner.getSelectedItemPosition();
             filterMinAge = agePos == 0 ? null : (agePos == 1 ? 6 : agePos == 2 ? 12 : 18);
+            filterPlaytimeMin = parsePositiveInt(playtimeMinView.getText());
+            filterPlaytimeMax = parsePositiveInt(playtimeMaxView.getText());
+            int cxPos = complexitySpinner.getSelectedItemPosition();
+            filterComplexity = cxPos == 0 ? null : complexityOptions[cxPos];
+            // Жанры: собираем отмеченные чипы
+            filterGenres.clear();
+            for (int i = 0; i < genreChipGroup.getChildCount(); i++) {
+                if (genreChipGroup.getChildAt(i) instanceof Chip) {
+                    Chip c = (Chip) genreChipGroup.getChildAt(i);
+                    if (c.isChecked()) filterGenres.add(c.getText().toString());
+                }
+            }
             filterPriceMin = parsePositiveDouble(priceMinView.getText());
             filterPriceMax = parsePositiveDouble(priceMaxView.getText());
             filterInStock = inStockView.isChecked() ? Boolean.TRUE : null;
@@ -363,6 +440,7 @@ public class MainActivity extends AppCompatActivity {
         hideEmptyState();
 
         final String queryAtRequest = getSearchQuery();
+        String genresParam = filterGenres.isEmpty() ? null : String.join(",", filterGenres);
         productsCall = apiService.getGameVariants(
                 queryAtRequest,
                 filterMinPlayers,
@@ -370,7 +448,11 @@ public class MainActivity extends AppCompatActivity {
                 filterMinAge,
                 filterPriceMin,
                 filterPriceMax,
-                filterInStock
+                filterInStock,
+                genresParam,
+                filterComplexity,
+                filterPlaytimeMin,
+                filterPlaytimeMax
         );
         productsCall.enqueue(new Callback<List<GameVariantForList>>() {
             @Override

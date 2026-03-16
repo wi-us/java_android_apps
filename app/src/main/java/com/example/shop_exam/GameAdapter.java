@@ -84,7 +84,11 @@ public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder
 
             // Количество игроков
             if (game.getMinPlayers() > 0 && game.getMaxPlayers() > 0) {
-                holder.playersText.setText(game.getMinPlayers() + "-" + game.getMaxPlayers());
+                if (game.getMinPlayers() == game.getMaxPlayers()) {
+                    holder.playersText.setText(String.valueOf(game.getMinPlayers()));
+                } else {
+                    holder.playersText.setText(game.getMinPlayers() + "-" + game.getMaxPlayers());
+                }
             } else {
                 holder.playersText.setText("");
             }

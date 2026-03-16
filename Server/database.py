@@ -42,6 +42,16 @@ class User(BaseModel):
     def role_name(self):
         return self.role.name if self.role else None
 
+class PendingRegistration(BaseModel):
+    """Временная запись до подтверждения email. После верификации удаляется, создаётся User."""
+    id = AutoField()
+    email = CharField(unique=True)
+    login = CharField()
+    password_hash = CharField()
+    code = CharField(max_length=6)
+    expires_at = DateTimeField()
+    created_at = DateTimeField(default=datetime.now)
+
 class Address(BaseModel):
     id = AutoField()
     user = ForeignKeyField(User, backref='addresses')
@@ -93,6 +103,10 @@ class GameVariant(BaseModel):
     game = ForeignKeyField(Game, backref='variants')
     edition_name = CharField()
     description = TextField(null=True)
+    description_html = TextField(null=True)
+    rules_html = TextField(null=True)
+    components_html = TextField(null=True)
+    complexity = CharField(null=True)  # Лёгкая / Средняя / Сложная / Хардкор
     language = ForeignKeyField(Language, backref='variants', null=True)
     is_expansion = BooleanField(default=False)
     weight_grams = IntegerField(null=True)
@@ -147,7 +161,7 @@ class OrderItem(BaseModel):
 def create_tables():
     with db:
         db.create_tables([
-            Role, User, Address, Status, AgeRating, Language, Genre, Game, GameGenre,
+            Role, User, PendingRegistration, Address, Status, AgeRating, Language, Genre, Game, GameGenre,
             GameVariant, VariantImage, Cart, CartItem, Order, OrderItem
         ], safe=True)
 
@@ -201,6 +215,14 @@ def migrate_schema() -> None:
                 _try_drop_column(variant_table, "contents_note")
             if "is_base_game" in cols:
                 _try_drop_column(variant_table, "is_base_game")
+            if "description_html" not in cols:
+                _try_add_column(variant_table, "description_html TEXT")
+            if "rules_html" not in cols:
+                _try_add_column(variant_table, "rules_html TEXT")
+            if "components_html" not in cols:
+                _try_add_column(variant_table, "components_html TEXT")
+            if "complexity" not in cols:
+                _try_add_column(variant_table, "complexity VARCHAR(50)")
 
         # User.registration_date (нужен для схемы UserSchema / регистрации)
         if user_table in existing_tables:
@@ -212,6 +234,11 @@ def migrate_schema() -> None:
                 db.execute_sql(f'UPDATE "{user_table}" SET registration_date = CURRENT_TIMESTAMP WHERE registration_date IS NULL')
             except Exception:
                 pass
+
+        # PendingRegistration table
+        pending_table = PendingRegistration._meta.table_name
+        if pending_table not in existing_tables:
+            db.create_tables([PendingRegistration], safe=True)
 
         # Address.full_address (автоввод адреса)
         address_table = Address._meta.table_name
