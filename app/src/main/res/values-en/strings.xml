@@ -18,4 +18,5 @@
     <string name="filter_show">Filters</string>
     <string name="play_voice">Play voice</string>
     <string name="stop_voice">Stop voice</string>
+    <string name="read_recipe">Read recipe?</string>
 </resources>

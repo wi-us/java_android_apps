@@ -11,4 +11,8 @@
     <color name="color_disabled">#BDBDBD</color>
     <color name="color_disabled_text">#FFFFFF</color>
     <color name="color_delete_bg">#E53935</color>
+
+    <!-- Кнопки таймера: нажатая = голубой, иначе = основной синий -->
+    <color name="color_timer_pressed">#64B5F6</color>
+    <color name="color_timer_disabled">#BDBDBD</color>
 </resources>

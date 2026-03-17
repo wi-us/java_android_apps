@@ -18,4 +18,5 @@
     <string name="filter_show">Фильтры</string>
     <string name="play_voice">Озвучить</string>
     <string name="stop_voice">Остановить</string>
+    <string name="read_recipe">Прочитать рецепт?</string>
 </resources>

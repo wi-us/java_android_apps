@@ -34,101 +34,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/recipe_title"
-        style="@style/TextAppearance.App.Headline"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/app_space_sm"
-        android:layout_marginEnd="@dimen/app_space_sm"
-        android:layout_marginTop="@dimen/app_space_md"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_back"
-        tools:text="Пирог из тыквы" />
+    <!-- Дубликаты удалены: заголовок, картинка, видео, плеер - только внутри ScrollView -->
 
-    <ImageView
-        android:id="@+id/recipe_photo_dish"
-        android:layout_width="0dp"
-        android:layout_height="180dp"
-        android:layout_marginTop="@dimen/app_space_md"
-        android:scaleType="fitCenter"
-        android:background="@drawable/placeholder_recipe"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/recipe_title" />
-
-    <FrameLayout
-        android:id="@+id/recipe_video_container"
-        android:layout_width="0dp"
-        android:layout_height="200dp"
-        android:layout_marginTop="@dimen/app_space_sm"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/recipe_photo_dish">
-
-        <VideoView
-            android:id="@+id/recipe_video"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </FrameLayout>
-
-    <Button
-        android:id="@+id/btn_play_voice"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/app_space_sm"
-        android:visibility="gone"
-        android:text="@string/play_voice"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/recipe_video_container" />
-
-    <!-- Аудиоплеер как в гайде metanit.com -->
-    <LinearLayout
-        android:id="@+id/audio_player_container"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/app_space_sm"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_play_voice">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/playButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Play"
-                android:onClick="play" />
-
-            <Button
-                android:id="@+id/pauseButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Pause"
-                android:onClick="pause" />
-
-            <Button
-                android:id="@+id/stopButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Stop"
-                android:onClick="stop" />
-        </LinearLayout>
-
-
-    </LinearLayout>
-
+    <!-- Круглая кнопка настройки таймеров как студент добавил -->
     <ScrollView
         android:id="@+id/scroll_content"
         android:layout_width="0dp"
@@ -136,14 +44,60 @@
         android:fillViewport="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/audio_player_container">
+        app:layout_constraintTop_toBottomOf="@id/btn_language"
+        app:layout_constraintVertical_bias="0.0">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:padding="@dimen/app_space_md"
             android:paddingBottom="@dimen/app_space_lg">
+
+            <!-- Заголовок рецепта теперь внутри скролла -->
+            <TextView
+                android:id="@+id/recipe_title_scroll"
+                style="@style/TextAppearance.App.Headline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_md"
+                tools:text="Пирог из тыквы" />
+
+            <!-- Изображение рецепта внутри скролла -->
+            <ImageView
+                android:id="@+id/recipe_photo_dish_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="@dimen/app_space_md"
+                android:background="@drawable/placeholder_recipe"
+                android:scaleType="fitCenter" />
+
+            <!-- Видео внутри скролла -->
+            <FrameLayout
+                android:id="@+id/recipe_video_container_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="@dimen/app_space_sm"
+                android:visibility="gone">
+
+                <VideoView
+                    android:id="@+id/recipe_video_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </FrameLayout>
+
+            <!-- Кнопка озвучки внутри скролла -->
+            <Button
+                android:id="@+id/btn_play_voice_scroll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/app_space_sm"
+                android:text="@string/play_voice"
+                android:visibility="gone" />
+
+            <!-- Таймеры убраны с основной страницы - теперь только в модальном окне -->
 
             <TextView
                 android:id="@+id/label_ingredients"
@@ -176,4 +130,15 @@
                 android:orientation="vertical" />
         </LinearLayout>
     </ScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_timer_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_timer"
+        android:contentDescription="Настройка таймеров"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
